@@ -54,8 +54,17 @@ npm start
 ```
 
 Any OpenAI-compatible endpoint works: Ollama, vLLM, LM Studio, llama.cpp server, OpenAI
-itself, gateways, or a remote server you control. Provider configuration is fully
-externalized — no vendor is hard-coded, and Ideno Core contains no provider-specific code.
+itself, NVIDIA NIM (`https://integrate.api.nvidia.com/v1`), gateways, or a remote server
+you control. Provider configuration is fully externalized — no vendor is hard-coded, and
+Ideno Core contains no provider-specific code.
+
+Verify a provider before starting the app (health check, model listing, and a real
+structured-output round trip using the production envelope schema):
+
+```bash
+export NVIDIA_API_KEY=nvapi-...        # or whatever api_key_env your provider uses
+npm run provider:check nvidia-nim      # provider id from your config
+```
 
 ## How it works
 
@@ -124,7 +133,7 @@ Key invariants:
 
 ```bash
 npm run dev        # server (tsx watch) on :8787 + vite dev server on :5173 proxying /api
-npm test           # full test suite (91 tests)
+npm test           # full test suite (93 tests)
 npm run typecheck  # strict TypeScript across server + web
 npm run build      # typecheck + web build + server bundle
 ```
@@ -136,6 +145,8 @@ npm run build      # typecheck + web build + server bundle
 - Full pipeline end-to-end over real HTTP: idea → structuring → constraint with impact
   analysis and assumption invalidation → alternatives → user decision → versioned state
   (greenhouse scenario, §34) — using the scripted demo provider.
+- `npm run provider:check` plumbing (health, models, structured round trip) executed
+  against the demo provider.
 - OpenAI-compatible adapter wire behavior against an explicit in-process mock server:
   request shape, `json_schema`/`json_object` response formats, SSE streaming, error
   classification (401/404/429/400-context/500/timeout/cancel), health checks.
@@ -146,8 +157,10 @@ npm run build      # typecheck + web build + server bundle
 
 **NOT verified in this environment:**
 
-- Any real inference provider (OpenAI, Ollama, vLLM, …). The sandbox has no outbound
-  access to inference APIs and no local models. The adapter implements the documented
+- Any real inference provider (OpenAI, Ollama, vLLM, NVIDIA NIM, …). The sandbox's
+  network policy allows only github.com, npm and PyPI — a direct TLS probe to
+  integrate.api.nvidia.com fails at connection setup, so real endpoints are unreachable
+  from the build environment. Use `npm run provider:check <id>` on your own machine. The adapter implements the documented
   OpenAI-compatible protocol and passes protocol-level tests against a mock; configure a
   real endpoint to verify against your infrastructure.
 - Real-model output quality, capability claims of specific vendors, or json_schema

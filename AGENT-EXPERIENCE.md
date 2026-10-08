@@ -121,3 +121,43 @@ bundled with esbuild `--packages=external`).
 - Ideas for later (recorded, not implemented — §44): deterministic contradiction
   checker over structured constraint fields; per-task model routing (e.g. a cheap model
   for extraction, a strong model for critique); open-question aging; state export.
+
+## 2026-10-08 — provider verification tooling (v0.1.1)
+
+### Findings
+
+- **The build sandbox cannot reach any inference endpoint.** A direct TLS probe to
+  `integrate.api.nvidia.com:443` fails at connection setup (network policy allows only
+  github.com, npm registry, PyPI). Consequence: no real-provider verification is possible
+  from this environment, with or without credentials. This is now stated in the README
+  rather than papered over.
+- **A user API key offered for testing was not used and not stored.** Decision: secrets
+  volunteered in chat are never written to files, configs, commands, or commits; the
+  correct flow is env-var + local `provider:check`. Users should rotate keys shared in
+  chat regardless.
+- **Sandbox persistence quirk:** `node_modules/`, `dist/`, and gitignored paths
+  (`data/`, `config/ideno.config.json`) do not survive session boundaries — each new
+  working session needs `npm install` + `npm run build`, and local runtime state starts
+  fresh. Plan for this; never treat `data/` as durable across sessions here.
+- **Example config bug caught by schema validation:** `$note` annotation keys inside
+  `routing` (and `providers`) are fatal — both are Zod records that validate every
+  value, unlike plain objects that strip unknown keys. Fixed two ways: removed the
+  offending key from the example, AND made the loader strip `$`-prefixed keys inside
+  those two records (annotation convention). Lesson: validate the *example* config
+  against the real schema in a check, not just user configs at runtime — an example
+  that fails when copied verbatim is a bug.
+
+### Decisions
+
+- `provider:check` reuses the production `AIRuntime.runStructured` path with the real
+  envelope wire schema instead of a synthetic mini-schema: the check verifies exactly
+  what a real turn exercises (routing, negotiation, Zod validation, repair pass), so a
+  passing check means "this endpoint works with Ideno", not "this endpoint speaks HTTP".
+- The check forces routing to the selected provider (empty fallbacks) so it tests what
+  you pointed it at, while still respecting the configured privacy mode — a LOCAL_ONLY
+  configuration refuses to check a cloud provider, which is correct behavior, and the
+  error explains why.
+- NVIDIA NIM defaults to `structured_output: "json_schema"` in the example, with an
+  explicit note to fall back to `json_object`/`none` if the endpoint rejects it —
+  per-model support varies and was NOT verifiable from here (do not claim capabilities
+  you cannot test).

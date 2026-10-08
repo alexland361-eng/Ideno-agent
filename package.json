@@ -1,7 +1,7 @@
 {
   "name": "ideno",
-  "version": "0.1.0",
-  "description": "Ideno — an idea-development system built around a persistent, structured, evidence-aware Idea State.",
+  "version": "0.1.1",
+  "description": "Ideno \u2014 an idea-development system built around a persistent, structured, evidence-aware Idea State.",
   "type": "module",
   "private": true,
   "engines": {
@@ -13,7 +13,8 @@
     "start": "node dist/server/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "provider:check": "tsx scripts/check-provider.ts"
   },
   "dependencies": {
     "express": "^5.2.1",

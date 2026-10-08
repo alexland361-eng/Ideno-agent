@@ -72,6 +72,13 @@ export async function loadConfig(env: NodeJS.ProcessEnv = process.env): Promise<
     throw new ConfigurationError(`Config file ${configPath} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  // `providers` and `routing` are Zod records (every value must be a provider
+  // or route object), so "$note"/"$comment" annotation keys inside them would
+  // fail validation. Strip `$`-prefixed keys from those two records before
+  // parsing — annotations elsewhere are already tolerated (objects strip
+  // unknown keys). Discovered when the example config itself tripped on this.
+  stripDollarKeys(parsedJson, ['providers', 'routing']);
+
   const parsed = IdenoConfig.safeParse(parsedJson);
   if (!parsed.success) {
     const detail = parsed.error.issues.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`);
@@ -157,4 +164,19 @@ export function redactConfig(config: ConfigType): RedactedConfig {
     routing: config.routing,
     research_provider_configured: false,
   };
+}
+
+function stripDollarKeys(value: unknown, keys: string[]): void {
+  if (value === null || typeof value !== 'object') return;
+  const obj = value as Record<string, unknown>;
+  for (const key of keys) {
+    const child = obj[key];
+    if (child !== null && typeof child === 'object' && !Array.isArray(child)) {
+      for (const subKey of Object.keys(child as object)) {
+        if (subKey.startsWith('$')) {
+          delete (child as Record<string, unknown>)[subKey];
+        }
+      }
+    }
+  }
 }

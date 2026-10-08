@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-10-08 — v0.1.1
+
+### Added
+
+- `npm run provider:check [provider-id]` (`scripts/check-provider.ts`): provider
+  self-test that runs the configuration check, health check (GET /models), model
+  listing (with a warning when the configured model is absent from the catalog),
+  and a REAL structured-output round trip using the production envelope schema —
+  exercising routing, capability negotiation, validation, and the bounded repair
+  pass exactly as a normal turn does. Secrets are read from the environment only.
+- NVIDIA NIM example provider entry in `config/ideno.config.example.json`
+  (`https://integrate.api.nvidia.com/v1`, OpenAI-compatible, `api_key_env:
+  NVIDIA_API_KEY`) with guidance on `structured_output` fallbacks.
+
+### Changed
+
+- Config loader now tolerates `$`-prefixed annotation keys (`$note`, `$comment`)
+  inside `providers` and `routing`. Both are Zod records, so an annotation key
+  previously failed validation with a ConfigurationError — discovered when the
+  example config itself tripped on it during schema validation. Regression test
+  added.
+
+### Verification status
+
+- Verified: `npm run provider:check` executed against the scripted demo provider
+  (plumbing verified — health, model listing, structured round trip all pass;
+  the demo is not AI). Full suite: 93 tests passing, typecheck clean.
+- NOT verified: NVIDIA NIM or any other real endpoint. The build sandbox's
+  network policy blocks integrate.api.nvidia.com at connection setup (verified
+  with a direct TLS probe — no key was used or stored). The NIM entry follows
+  NVIDIA's documented OpenAI-compatible API shape; `structured_output` support
+  varies by model and must be confirmed per endpoint via `provider:check`.
+
 ## 2026-10-08 — v0.1.0
 
 First working implementation of the Ideno idea-development system: the complete

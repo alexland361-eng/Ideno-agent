@@ -75,6 +75,24 @@ describe('loadConfig', () => {
     }
   });
 
+  it('tolerates $-prefixed annotation keys inside providers and routing', async () => {
+    const dir = await tempDir();
+    const file = path.join(dir, 'config.json');
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        providers: { demo: { type: 'demo', model: 'x' }, $note: 'annotations are fine' },
+        routing: {
+          conversation: { provider: 'demo', fallbacks: [] },
+          $note: 'per-task routing notes are fine too',
+        },
+      }),
+      'utf8',
+    );
+    const { config } = await loadConfig({ IDENO_CONFIG: file });
+    expect(config.routing.conversation?.provider).toBe('demo');
+  });
+
   it('applies env overrides for privacy mode and port', async () => {
     const dir = await tempDir();
     const file = path.join(dir, 'config.json');
