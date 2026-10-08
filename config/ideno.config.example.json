@@ -1,0 +1,104 @@
+{
+  "$comment": [
+    "Ideno provider configuration (\u00a710).",
+    "Copy to config/ideno.config.json and adapt. That file is gitignored.",
+    "Secrets: prefer api_key_env (read from the environment) over api_key in the file.",
+    "The browser NEVER receives provider configuration \u2014 only a redacted view (provider ids, models, origins).",
+    "Privacy modes: LOCAL_ONLY (never send data to cloud providers), PREFERRED_LOCAL (try local first), CLOUD_ALLOWED (routing order as configured), CLOUD_ONLY (local providers excluded).",
+    "structured_output: 'json_schema' (native structured outputs), 'json_object' (valid JSON but schema enforced only by Ideno), 'none' (prompt-based; Ideno validates and repairs once).",
+    "Routing (\u00a711): each task names a primary provider plus fallbacks; fallbacks are filtered by the privacy mode \u2014 LOCAL_ONLY will never fall back to a cloud provider. v0.1 has one task ('conversation'); the table exists so per-task model selection can be added without touching the core.",
+    "Verify a provider before first use: export its api_key env var, then run 'npm run provider:check <provider-id>'."
+  ],
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8787
+  },
+  "data_dir": "data",
+  "privacy_mode": "CLOUD_ALLOWED",
+  "providers": {
+    "local-ollama": {
+      "type": "openai_compatible",
+      "display_name": "Ollama (local)",
+      "base_url": "http://localhost:11434/v1",
+      "model": "llama3.1:8b",
+      "privacy": "local",
+      "structured_output": "json_schema",
+      "timeout_ms": 180000,
+      "$note": "Ollama serves an OpenAI-compatible API; no key needed. For older builds that reject json_schema, set structured_output to json_object or none."
+    },
+    "local-vllm": {
+      "type": "openai_compatible",
+      "display_name": "vLLM (local)",
+      "base_url": "http://localhost:8000/v1",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "privacy": "local",
+      "api_key_env": "VLLM_API_KEY",
+      "structured_output": "json_schema",
+      "include_usage_in_stream": true,
+      "$note": "vLLM supports guided structured output and stream usage. 'local' here means user-controlled infrastructure \u2014 it does NOT have to be localhost."
+    },
+    "remote-selfhosted": {
+      "type": "openai_compatible",
+      "display_name": "Self-hosted (remote)",
+      "base_url": "https://inference.example.internal/v1",
+      "model": "your-model",
+      "privacy": "cloud",
+      "api_key_env": "SELFHOSTED_API_KEY",
+      "$note": "A remote endpoint you control. Declared privacy 'cloud' because data leaves your machine \u2014 privacy declarations must be honest, not aspirational."
+    },
+    "cloud-openai": {
+      "type": "openai_compatible",
+      "display_name": "OpenAI",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "privacy": "cloud",
+      "api_key_env": "OPENAI_API_KEY",
+      "$note": "Requests go browser \u2192 Ideno backend \u2192 provider. The key never reaches the browser."
+    },
+    "gateway": {
+      "type": "openai_compatible",
+      "display_name": "Model gateway",
+      "base_url": "https://your-gateway.example.com/v1",
+      "model": "any/model-name",
+      "privacy": "cloud",
+      "api_key_env": "GATEWAY_API_KEY",
+      "$note": "Aggregators/gateways (OpenRouter-style) work like any OpenAI-compatible endpoint."
+    },
+    "nvidia-nim": {
+      "type": "openai_compatible",
+      "display_name": "NVIDIA NIM",
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "model": "meta/llama-3.3-70b-instruct",
+      "privacy": "cloud",
+      "api_key_env": "NVIDIA_API_KEY",
+      "structured_output": "json_schema",
+      "timeout_ms": 120000,
+      "$note": "NVIDIA NIM's hosted API is OpenAI-compatible (chat/completions, Bearer nvapi-... keys, model ids like 'meta/llama-3.3-70b-instruct' \u2014 use the exact id from build.nvidia.com). Run 'npm run provider:check nvidia-nim' with NVIDIA_API_KEY set to verify before starting the app. structured_output support varies by model: if the endpoint rejects response_format json_schema, set it to 'json_object' or 'none' \u2014 Ideno then validates the output itself and repairs once if needed."
+    },
+    "demo": {
+      "type": "demo",
+      "display_name": "Scripted demo (not AI)",
+      "privacy": "local",
+      "model": "scripted-demo-v0",
+      "$note": "DETERMINISTIC SCRIPTED PROVIDER \u2014 NOT AN AI MODEL. Ships as the safe default so a fresh clone boots and the state pipeline can be demonstrated without any model. Clearly labeled as a demo in the UI. Replace it with a real provider for actual idea development."
+    }
+  },
+  "routing": {
+    "conversation": {
+      "provider": "local-ollama",
+      "fallbacks": [
+        "cloud-openai",
+        "demo"
+      ]
+    }
+  },
+  "context": {
+    "recent_messages": 10,
+    "$note": "How many recent conversation messages are sent as supporting context. The Idea State itself is always sent (it is canonical); the conversation is not."
+  },
+  "$research": "Optional research provider (v0.3+). One of: {\"type\":\"tavily\",\"api_key_env\":\"TAVILY_API_KEY\"} | {\"type\":\"brave\",\"api_key_env\":\"BRAVE_API_KEY\"} | {\"type\":\"searxng\",\"base_url\":\"http://localhost:8888\"} (self-hosted, no key). Keys are env-var only. Without this section research fails explicitly (never faked).",
+  "$supabase": "Optional accounts + per-user settings. When present, users can sign in (email/password via Supabase Auth, mediated by this server) and store their AI provider keys server-side. Requires env vars SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY, the table from supabase/migrations/0001_user_settings.sql, and: \"supabase\": {\"url\": \"https://YOUR-PROJECT.supabase.co\"}",
+  "supabase_example": {
+    "url": "https://YOUR-PROJECT.supabase.co"
+  }
+}

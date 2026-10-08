@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Ideno — Idea Development System</title>
+    <script>
+      // Resolve appearance before first paint to avoid a theme flash.
+      (function () {
+        try {
+          var mode = localStorage.getItem('ideno.appearance') || 'system';
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a3a40'/%3E%3Cpath d='M16 7l8 4.5-8 4.5-8-4.5 8-4.5zm8 9l-8 4.5-8-4.5' stroke='%23f0f0f2' stroke-width='2.2' fill='none' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-qeRLYDZl.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CP3XLHJX.css">
+  </head>
+  <body>
+    <!-- Liquid Glass lens (refraction): subtle displacement of the backdrop.
+         Progressive enhancement — applied only when the browser supports
+         url() filters in backdrop-filter (Chromium); others get plain blur. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <filter id="ideno-lens" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.016" numOctaves="2" seed="7" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="1.6" result="softNoise" />
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <div id="root"></div>
+  </body>
+</html>
