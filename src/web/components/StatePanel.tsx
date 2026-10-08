@@ -1,26 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   IdeaCase,
-  GoalItem,
-  RequirementItem,
-  AssumptionItem,
-  ConstraintItem,
-  UnknownItem,
-  RiskItem,
-  DependencyItem,
-  EvidenceItem,
-  ResearchItem,
-  AlternativeItem,
-  DecisionItem,
-  RejectedApproachItem,
-  OpenQuestionItem,
+  CollectionKey,
   KnowledgeClass,
 } from '../../shared/schemas/ideaCase.js';
+import { Icon, type IconName } from './icons.js';
+import { ConfidenceDots, Sheet, cn } from './glass.js';
 
 /**
- * Live Idea State panel (§28 UI Architecture).
- * Communicates structure, epistemic class, and lifecycle — not a JSON dump.
+ * The Idea State surface (§12, §13): the visual centerpiece of Ideno.
+ * Elegant glass sections with progressive disclosure; every item carries
+ * semantic metadata (knowledge class, origin, lifecycle). Clicking an item
+ * opens an inspector-style detail sheet (§47). Highlight pulses (§45, §46)
+ * make the evolution of the idea perceptible when proposals are accepted.
  */
+
+export interface DetailTarget {
+  collection: CollectionKey;
+  id: string;
+}
+
+export interface StatePanelProps {
+  caseData: IdeaCase;
+  highlightKeys: Set<string>;
+  detail: DetailTarget | null;
+  onDetailChange: (target: DetailTarget | null) => void;
+}
 
 const CLASS_LABEL: Record<KnowledgeClass, string> = {
   USER_PROVIDED: 'user',
@@ -35,94 +40,70 @@ const CLASS_LABEL: Record<KnowledgeClass, string> = {
   REJECTED: 'rejected',
 };
 
-function ClassBadge({ kc }: { kc: string }) {
+function KBadge({ kc }: { kc: string }) {
   const key = (kc as KnowledgeClass) in CLASS_LABEL ? (kc as KnowledgeClass) : 'MODEL_SUGGESTED';
-  return <span className={`kbadge kbadge-${key}`}>{CLASS_LABEL[key]}</span>;
+  return <span className={cn('kbadge', `kb-${key}`)}>{CLASS_LABEL[key]}</span>;
 }
 
-interface ItemRowProps {
-  id: string;
-  text: string;
-  status: string;
-  knowledgeClass: string;
-  chips?: string[];
-  sub?: string;
+interface SectionDef {
+  key: CollectionKey;
+  label: string;
+  icon: IconName;
+  openByDefault?: boolean;
 }
 
-function ItemRow({ id, text, status, knowledgeClass, chips, sub }: ItemRowProps) {
-  const dead = status !== 'active';
-  return (
-    <div className={`item-row ${dead ? `item-dead item-${status}` : ''}`} title={`${id} · ${status}`}>
-      <div className="item-main">
-        <span className={`item-text ${dead ? 'strike' : ''}`}>{text}</span>
-        <span className="item-chips">
-          {chips?.map((c) => (
-            <span key={c} className={`chip chip-${c.replace(/\s+/g, '-')}`}>
-              {c}
-            </span>
-          ))}
-        </span>
-      </div>
-      <div className="item-meta">
-        <ClassBadge kc={knowledgeClass} />
-        <span className="item-id">{id}</span>
-        {dead && <span className="item-status-note">{status}</span>}
-      </div>
-      {sub && <div className="item-sub">{sub}</div>}
-    </div>
-  );
-}
+const SECTIONS: SectionDef[] = [
+  { key: 'goals', label: 'Goal', icon: 'compass' },
+  { key: 'requirements', label: 'Requirements', icon: 'check' },
+  { key: 'constraints', label: 'Constraints', icon: 'shield' },
+  { key: 'assumptions', label: 'Assumptions', icon: 'info' },
+  { key: 'unknowns', label: 'Unknowns', icon: 'alert' },
+  { key: 'open_questions', label: 'Open questions', icon: 'research' },
+  { key: 'alternatives', label: 'Alternatives', icon: 'layers' },
+  { key: 'decisions', label: 'Decisions', icon: 'bolt' },
+  { key: 'risks', label: 'Risks', icon: 'alert' },
+  { key: 'dependencies', label: 'Dependencies', icon: 'state' },
+  { key: 'evidence', label: 'Evidence', icon: 'inspect', openByDefault: false },
+  { key: 'research_items', label: 'Research', icon: 'research', openByDefault: false },
+  { key: 'rejected_approaches', label: 'Rejected', icon: 'minus', openByDefault: false },
+];
 
-function Section({
-  title,
-  count,
-  children,
-  defaultOpen = true,
-}: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  if (count === 0) return null;
-  return (
-    <section className="state-section">
-      <button className="section-header" onClick={() => setOpen(!open)}>
-        <span className={`chev ${open ? 'open' : ''}`}>▸</span>
-        <span className="section-title">{title}</span>
-        <span className="section-count">{count}</span>
-      </button>
-      {open && <div className="section-body">{children}</div>}
-    </section>
-  );
-}
-
-export function StatePanel({ caseData }: { caseData: IdeaCase }) {
+export function StatePanel({ caseData, highlightKeys, detail, onDetailChange }: StatePanelProps) {
   const c = caseData;
-  const active = <T extends { status: string }>(items: T[]): T[] => items.filter((i) => i.status === 'active');
-  const dead = <T extends { status: string }>(items: T[]): T[] => items.filter((i) => i.status !== 'active');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Highlighted sections expand and scroll into view (§46 linkage).
+  useEffect(() => {
+    if (highlightKeys.size === 0) return;
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      for (const key of highlightKeys) next.delete(key);
+      return next;
+    });
+    const first = bodyRef.current?.querySelector<HTMLElement>('.sp-section.hl');
+    first?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [highlightKeys]);
 
   return (
-    <div className="state-panel">
-      <div className="state-overview">
-        <h2 className="case-title">{c.title}</h2>
-        {c.original_idea && <p className="case-original">“{c.original_idea}”</p>}
-        {c.current_intent && (
-          <p className="case-intent">
-            <span className="label">Intent</span> {c.current_intent}
-          </p>
-        )}
-        <div className="confidence-wrap" title={`How well-specified the idea is (${c.confidence.note || 'no note'})`}>
-          <div className="confidence-bar">
-            <div className="confidence-fill" style={{ width: `${Math.round(c.confidence.overall * 100)}%` }} />
-          </div>
-          <span className="confidence-label">confidence {Math.round(c.confidence.overall * 100)}%</span>
+    <div className="statepanel">
+      <div className="sp-overview" ref={bodyRef}>
+        <div className="sp-title-row">
+          <h2 className="sp-title">{c.title}</h2>
+          <span className="version-chip">v{c.version}</span>
         </div>
-        {c.current_state.summary && <p className="case-summary">{c.current_state.summary}</p>}
+        {c.original_idea && <p className="sp-original">“{c.original_idea}”</p>}
+        {c.current_intent && <p className="sp-intent">{c.current_intent}</p>}
+        <div className="sp-confidence">
+          <ConfidenceDots value={c.confidence.overall} />
+          <span className="sp-confidence-note">
+            {c.confidence.note || 'how well-specified the idea is'}
+          </span>
+        </div>
+        {c.current_state.summary && <p className="sp-summary">{c.current_state.summary}</p>}
         {c.current_state.next_steps.length > 0 && (
-          <div className="next-steps">
-            <span className="label">Next steps</span>
+          <div className="sp-next">
+            <span className="group-label">Next</span>
             <ul>
               {c.current_state.next_steps.map((s, i) => (
                 <li key={i}>{s}</li>
@@ -132,136 +113,301 @@ export function StatePanel({ caseData }: { caseData: IdeaCase }) {
         )}
       </div>
 
-      <Section title="Goals" count={active(c.goals).length}>
-        {active(c.goals).map((g: GoalItem) => (
-          <ItemRow key={g.id} id={g.id} text={g.text} status={g.status} knowledgeClass={g.knowledge_class} sub={g.success_criteria ? `Success: ${g.success_criteria}` : undefined} />
-        ))}
-        {dead(c.goals).map((g) => (
-          <ItemRow key={g.id} id={g.id} text={g.text} status={g.status} knowledgeClass={g.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Requirements" count={active(c.requirements).length}>
-        {active(c.requirements).map((r: RequirementItem) => (
-          <ItemRow key={r.id} id={r.id} text={r.text} status={r.status} knowledgeClass={r.knowledge_class} chips={[r.priority]} />
-        ))}
-        {dead(c.requirements).map((r) => (
-          <ItemRow key={r.id} id={r.id} text={r.text} status={r.status} knowledgeClass={r.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Constraints" count={active(c.constraints).length}>
-        {active(c.constraints).map((k: ConstraintItem) => (
-          <ItemRow key={k.id} id={k.id} text={k.text} status={k.status} knowledgeClass={k.knowledge_class} chips={[k.hard ? 'hard' : 'soft']} />
-        ))}
-        {dead(c.constraints).map((k) => (
-          <ItemRow key={k.id} id={k.id} text={k.text} status={k.status} knowledgeClass={k.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Assumptions" count={active(c.assumptions).length}>
-        {active(c.assumptions).map((a: AssumptionItem) => (
-          <ItemRow key={a.id} id={a.id} text={a.text} status={a.status} knowledgeClass={a.knowledge_class} sub={a.note} />
-        ))}
-        {dead(c.assumptions).map((a) => (
-          <ItemRow key={a.id} id={a.id} text={a.text} status={a.status} knowledgeClass={a.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Unknowns" count={active(c.unknowns).length}>
-        {active(c.unknowns).map((u: UnknownItem) => (
-          <ItemRow key={u.id} id={u.id} text={u.text} status={u.status} knowledgeClass={u.knowledge_class} chips={[u.priority]} />
-        ))}
-        {dead(c.unknowns).map((u) => (
-          <ItemRow key={u.id} id={u.id} text={u.text} status={u.status} knowledgeClass={u.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Open questions" count={active(c.open_questions).length}>
-        {active(c.open_questions).map((q: OpenQuestionItem) => (
-          <ItemRow key={q.id} id={q.id} text={q.text} status={q.status} knowledgeClass={q.knowledge_class} chips={q.asked_to === 'research' ? ['for research'] : undefined} sub={q.answer ? `Answered: ${q.answer}` : undefined} />
-        ))}
-      </Section>
-
-      <Section title="Alternatives" count={c.alternatives.length}>
-        {c.alternatives.map((a: AlternativeItem) => (
-          <div key={a.id} className={`alt-card alt-${a.status}`}>
-            <div className="alt-head">
-              <span className={`alt-name ${a.status === 'rejected' || a.status === 'superseded' ? 'strike' : ''}`}>{a.name}</span>
-              <span className={`chip chip-alt-${a.status}`}>{a.status}</span>
-            </div>
-            <p className="alt-desc">{a.description}</p>
-            {a.advantages.length > 0 && (
-              <div className="alt-cols">
-                <ul className="alt-pros">
-                  {a.advantages.map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-                </ul>
-                <ul className="alt-cons">
-                  {a.disadvantages.map((x, i) => (
-                    <li key={i}>{x}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ))}
-      </Section>
-
-      <Section title="Decisions" count={active(c.decisions).length}>
-        {active(c.decisions).map((d: DecisionItem) => (
-          <ItemRow
-            key={d.id}
-            id={d.id}
-            text={d.decision}
-            status={d.status}
-            knowledgeClass={d.knowledge_class}
-            chips={[`by ${d.decision_maker}`]}
-            sub={[d.reason, d.basis !== 'user_message' ? `basis: ${d.basis}` : undefined].filter(Boolean).join(' · ') || undefined}
+      <div className="sp-sections">
+        {SECTIONS.map((section) => (
+          <StateSection
+            key={section.key}
+            def={section}
+            caseData={c}
+            highlighted={highlightKeys.has(section.key)}
+            collapsed={collapsed.has(section.key)}
+            onToggle={() =>
+              setCollapsed((prev) => {
+                const next = new Set(prev);
+                if (next.has(section.key)) next.delete(section.key);
+                else next.add(section.key);
+                return next;
+              })
+            }
+            onOpenItem={(id) => onDetailChange({ collection: section.key, id })}
           />
         ))}
-      </Section>
+      </div>
 
-      <Section title="Risks" count={active(c.risks).length}>
-        {active(c.risks).map((r: RiskItem) => (
-          <ItemRow key={r.id} id={r.id} text={r.text} status={r.status} knowledgeClass={r.knowledge_class} chips={[r.severity]} />
-        ))}
-      </Section>
-
-      <Section title="Dependencies" count={active(c.dependencies).length}>
-        {active(c.dependencies).map((d: DependencyItem) => (
-          <ItemRow key={d.id} id={d.id} text={d.text} status={d.status} knowledgeClass={d.knowledge_class} />
-        ))}
-      </Section>
-
-      <Section title="Evidence" count={active(c.evidence).length} defaultOpen={false}>
-        {active(c.evidence).map((e: EvidenceItem) => (
-          <ItemRow
-            key={e.id}
-            id={e.id}
-            text={e.claim}
-            status={e.status}
-            knowledgeClass={e.knowledge_class}
-            chips={[e.source_type === 'user' ? 'user' : e.source_type === 'external' ? 'external' : 'model knowledge']}
-            sub={`${e.source} · confidence ${Math.round(e.confidence * 100)}%`}
-          />
-        ))}
-      </Section>
-
-      <Section title="Research questions" count={c.research_items.filter((r) => r.status !== 'answered').length} defaultOpen={false}>
-        {c.research_items
-          .filter((r: ResearchItem) => r.status !== 'answered')
-          .map((r) => (
-            <ItemRow key={r.id} id={r.id} text={r.question} status={r.status === 'pending' ? 'active' : r.status} knowledgeClass={r.knowledge_class} chips={[r.status, r.priority]} sub={r.rationale} />
-          ))}
-      </Section>
-
-      <Section title="Rejected approaches" count={active(c.rejected_approaches).length} defaultOpen={false}>
-        {active(c.rejected_approaches).map((r: RejectedApproachItem) => (
-          <ItemRow key={r.id} id={r.id} text={r.text} status={r.status} knowledgeClass={r.knowledge_class} sub={r.reason ? `Reason: ${r.reason} (by ${r.rejected_by})` : `by ${r.rejected_by}`} />
-        ))}
-      </Section>
+      <ItemDetailSheet caseData={c} detail={detail} onDetailChange={onDetailChange} />
     </div>
   );
+}
+
+/* -------------------------------------------------------------------------- */
+
+function StateSection({
+  def,
+  caseData,
+  highlighted,
+  collapsed,
+  onToggle,
+  onOpenItem,
+}: {
+  def: SectionDef;
+  caseData: IdeaCase;
+  highlighted: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
+  onOpenItem: (id: string) => void;
+}) {
+  const items = caseData[def.key] as Array<Record<string, unknown> & { id: string }>;
+  const active = items.filter((i) => i.status === 'active' || (def.key === 'alternatives' && i.status === 'accepted'));
+  const extra = items.length - active.length;
+  const open = !collapsed;
+
+  if (active.length === 0 && extra === 0) return null;
+
+  return (
+    <section className={cn('sp-section glass mat-2', highlighted && 'hl')} data-section={def.key}>
+      <button className="sp-section-head" onClick={onToggle} aria-expanded={open}>
+        <Icon name={def.icon} size={13} className="sp-section-icon" />
+        <span className="sp-section-label">{def.label}</span>
+        <span className="sp-count">{active.length}</span>
+        {extra > 0 && <span className="sp-count-extra">+{extra}</span>}
+        <Icon name="chevron-down" size={13} className={cn('sp-chev', open && 'open')} />
+      </button>
+      {open && (
+        <div className="sp-section-body">
+          {active.map((item) => (
+            <StateItemRow
+              key={item.id}
+              collection={def.key}
+              item={item}
+              onOpen={() => onOpenItem(item.id)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StateItemRow({
+  collection,
+  item,
+  onOpen,
+}: {
+  collection: CollectionKey;
+  item: Record<string, unknown> & { id: string };
+  onOpen: () => void;
+}) {
+  const text = String(
+    item.text ?? item.claim ?? item.decision ?? item.question ?? item.name ?? item.id,
+  );
+  const chips: string[] = [];
+  if (typeof item.priority === 'string') chips.push(item.priority);
+  if (item.hard === true) chips.push('hard');
+  if (item.hard === false) chips.push('soft');
+  if (typeof item.severity === 'string') chips.push(item.severity);
+  if (collection === 'alternatives' && typeof item.status === 'string') chips.push(item.status);
+  const sub =
+    typeof item.note === 'string' && item.note
+      ? item.note
+      : typeof item.reason === 'string' && item.reason && collection === 'rejected_approaches'
+        ? `reason: ${item.reason}`
+        : collection === 'evidence'
+          ? `${String(item.source ?? '')} · confidence ${Math.round(Number(item.confidence ?? 0.5) * 100)}%`
+          : undefined;
+
+  return (
+    <button className="sp-item" onClick={onOpen} title={`Inspect ${item.id}`}>
+      <span className="sp-item-text">{text}</span>
+      {chips.length > 0 && (
+        <span className="sp-item-chips">
+          {chips.map((chip) => (
+            <span key={chip} className={cn('chip', `chip-${chip}`)}>
+              {chip}
+            </span>
+          ))}
+        </span>
+      )}
+      {sub && <span className="sp-item-sub">{sub}</span>}
+      <span className="sp-item-meta">
+        <KBadge kc={String(item.knowledge_class ?? 'MODEL_SUGGESTED')} />
+        <span className="sp-item-id">{item.id}</span>
+      </span>
+    </button>
+  );
+}
+
+/* --------------------------------------------------------------------------
+   Detail sheet (§47) — Apple-inspector-style surface for one state item.
+   -------------------------------------------------------------------------- */
+
+function ItemDetailSheet({
+  caseData,
+  detail,
+  onDetailChange,
+}: {
+  caseData: IdeaCase;
+  detail: DetailTarget | null;
+  onDetailChange: (t: DetailTarget | null) => void;
+}) {
+  const item = useMemo(() => {
+    if (!detail) return null;
+    const list = caseData[detail.collection] as Array<Record<string, unknown> & { id: string }>;
+    return list.find((i) => i.id === detail.id) ?? null;
+  }, [caseData, detail]);
+
+  if (!detail || !item) return null;
+
+  const text = String(
+    item.text ?? item.claim ?? item.decision ?? item.question ?? item.name ?? item.id,
+  );
+  const id = item.id;
+  const relatedEvidence = caseData.evidence.filter(
+    (e) => (e.supports ?? []).includes(id) || (e.contradicts ?? []).includes(id),
+  );
+  const relatedDecisions = caseData.decisions.filter((d) => (d.affected_ids ?? []).includes(id));
+
+  const label = SECTIONS.find((s) => s.key === detail.collection)?.label ?? detail.collection;
+
+  return (
+    <Sheet
+      open
+      onClose={() => onDetailChange(null)}
+      title={label}
+      className="item-detail"
+    >
+      <p className="detail-text">{text}</p>
+
+      <dl className="detail-grid">
+        <div>
+          <dt>Knowledge class</dt>
+          <dd>
+            <KBadge kc={String(item.knowledge_class ?? 'MODEL_SUGGESTED')} />
+          </dd>
+        </div>
+        <div>
+          <dt>Origin</dt>
+          <dd>
+            {String((item.provenance as Record<string, unknown> | undefined)?.source ?? '—')}
+            {((item.provenance as Record<string, unknown> | undefined)?.note as string | undefined)
+              ? ` · ${String((item.provenance as Record<string, unknown>).note)}`
+              : ''}
+          </dd>
+        </div>
+        <div>
+          <dt>Created</dt>
+          <dd>{formatDate(String(item.created_at))}</dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd>{formatDate(String(item.updated_at))}</dd>
+        </div>
+        {typeof item.last_change_reason === 'string' && item.last_change_reason && (
+          <div className="detail-wide">
+            <dt>Last change</dt>
+            <dd>{item.last_change_reason}</dd>
+          </div>
+        )}
+        {typeof item.status === 'string' && item.status !== 'active' && (
+          <div>
+            <dt>Status</dt>
+            <dd>
+              <span className={cn('chip', `chip-status-${item.status}`)}>{item.status}</span>
+            </dd>
+          </div>
+        )}
+        {typeof item.success_criteria === 'string' && item.success_criteria && (
+          <div className="detail-wide">
+            <dt>Success criteria</dt>
+            <dd>{item.success_criteria}</dd>
+          </div>
+        )}
+        {typeof item.rationale === 'string' && item.rationale && (
+          <div className="detail-wide">
+            <dt>Rationale</dt>
+            <dd>{item.rationale}</dd>
+          </div>
+        )}
+        {detail.collection === 'evidence' && (
+          <>
+            <div className="detail-wide">
+              <dt>Source</dt>
+              <dd>{String(item.source ?? '—')}</dd>
+            </div>
+            <div>
+              <dt>Confidence</dt>
+              <dd>
+                <ConfidenceDots value={Number(item.confidence ?? 0.5)} label="evidence confidence" />
+              </dd>
+            </div>
+          </>
+        )}
+        {detail.collection === 'alternatives' && (
+          <>
+            <div className="detail-wide">
+              <dt>Advantages</dt>
+              <dd>
+                <ul className="detail-list pros">
+                  {((item.advantages as string[]) ?? []).map((x, i) => (
+                    <li key={i}>{x}</li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+            <div className="detail-wide">
+              <dt>Limitations</dt>
+              <dd>
+                <ul className="detail-list cons">
+                  {((item.disadvantages as string[]) ?? []).map((x, i) => (
+                    <li key={i}>{x}</li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          </>
+        )}
+      </dl>
+
+      {(relatedEvidence.length > 0 || relatedDecisions.length > 0) && (
+        <div className="detail-related">
+          <div className="group-label">Related</div>
+          {relatedEvidence.map((e) => (
+            <button
+              key={e.id}
+              className="related-row"
+              onClick={() => onDetailChange({ collection: 'evidence', id: e.id })}
+            >
+              <Icon name="inspect" size={12} />
+              <span className="related-text">{e.claim}</span>
+              <span className={cn('chip', (e.contradicts ?? []).includes(id) ? 'chip-low' : 'chip-high')}>
+                {(e.contradicts ?? []).includes(id) ? 'contradicts' : 'supports'}
+              </span>
+            </button>
+          ))}
+          {relatedDecisions.map((d) => (
+            <button
+              key={d.id}
+              className="related-row"
+              onClick={() => onDetailChange({ collection: 'decisions', id: d.id })}
+            >
+              <Icon name="bolt" size={12} />
+              <span className="related-text">{d.decision}</span>
+              <span className="chip">decision</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
 }

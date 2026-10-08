@@ -81,6 +81,24 @@ npm run provider:check nvidia-nim      # provider id from your config
    and invalidates assumptions that no longer hold. Decisions are recorded with their
    maker (you vs. the model) and basis. You can inspect any version's diff at any time.
 
+## The interface
+
+The web client is a **Liquid Glass** design: layered translucent materials
+(blurred panes, opaque nested cards, floating overlays) in light, dark, and
+system appearance. Its spatial model puts the **Idea State at the center** —
+the conversation is on the left, the live state on the right, resizable and
+persisted between sessions. Every state item opens an inspector sheet
+(provenance, knowledge class, related evidence and decisions); every accepted
+proposal pulses the exact items it touched. ⌘K opens a command palette that
+searches state items, versions, and messages. On narrow screens the state
+becomes a full-screen layer; on phones it gets its own tab.
+
+The UI owns no business logic: it renders what the server validates and
+versioned. Runtime status in Settings is the real `/api/health` response —
+including the DEMO label when the scripted provider is active — never a
+fabricated metric. When something is not implemented (research), the UI says
+so instead of showing an empty simulation.
+
 ## Architecture
 
 ```
@@ -107,8 +125,12 @@ src/
 │   ├── research/            #   research provider interface (explicitly unimplemented)
 │   ├── api/                 #   express routes + SSE
 │   └── config/              #   config load, env overrides, redaction
-├── web/                     # React UI (conversation, live state, versions)
-└── tests/                   # vitest suites incl. end-to-end workflow
+├── web/                     # Liquid Glass React UI
+│   ├── styles/              #   design tokens + material system (light/dark)
+│   ├── components/          #   glass primitives, conversation, state panel,
+│   │                        #   command palette, toasts, icons
+│   └── views/               #   history, research, settings
+└── tests/                   # vitest suites incl. end-to-end workflow + UI
 ```
 
 Key invariants:
@@ -133,7 +155,7 @@ Key invariants:
 
 ```bash
 npm run dev        # server (tsx watch) on :8787 + vite dev server on :5173 proxying /api
-npm test           # full test suite (93 tests)
+npm test           # full test suite (105 tests: server, e2e, and browser UI)
 npm run typecheck  # strict TypeScript across server + web
 npm run build      # typecheck + web build + server bundle
 ```

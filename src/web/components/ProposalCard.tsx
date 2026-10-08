@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import type { StoredProposal } from '../../shared/schemas/proposal.js';
-import type { CollectionKey } from '../../shared/schemas/ideaCase.js';
+import { Icon } from './icons.js';
+import { Button, cn } from './glass.js';
 
 /**
- * Change review card (§5 Human Authority, §29 Change Inspection).
- * Every state-changing proposal is visible, explained, and requires an
- * explicit human decision before it touches the Idea State.
+ * Change proposal card (§15): proposal → inspection → acceptance → integration.
+ * This is where the human exercises authority over the Idea State.
  */
 
 const COLLECTION_LABELS: Record<string, string> = {
@@ -17,7 +17,7 @@ const COLLECTION_LABELS: Record<string, string> = {
   risks: 'Risks',
   dependencies: 'Dependencies',
   evidence: 'Evidence',
-  research_items: 'Research items',
+  research_items: 'Research',
   alternatives: 'Alternatives',
   decisions: 'Decisions',
   rejected_approaches: 'Rejected approaches',
@@ -30,14 +30,13 @@ function addedText(add: Record<string, unknown>): string {
 
 function addedSub(add: Record<string, unknown>): string | undefined {
   const bits: string[] = [];
-  if (typeof add.knowledge_class === 'string') bits.push(add.knowledge_class);
-  if (typeof add.priority === 'string') bits.push(`priority: ${add.priority}`);
-  if (typeof add.severity === 'string') bits.push(`severity: ${add.severity}`);
+  if (typeof add.knowledge_class === 'string') bits.push(add.knowledge_class.toLowerCase().replace(/_/g, ' '));
+  if (typeof add.priority === 'string') bits.push(add.priority);
+  if (typeof add.severity === 'string') bits.push(add.severity);
   if (add.hard === true) bits.push('hard');
   if (add.hard === false) bits.push('soft');
-  if (typeof add.source_type === 'string') bits.push(`source: ${add.source_type}`);
+  if (typeof add.source_type === 'string') bits.push(`source: ${add.source_type.replace(/_/g, ' ')}`);
   if (add.decision_maker) bits.push(`by ${String(add.decision_maker)}`);
-  if (typeof add.basis === 'string') bits.push(`basis: ${add.basis}`);
   return bits.length ? bits.join(' · ') : undefined;
 }
 
@@ -75,45 +74,52 @@ export function ProposalCard({
   }
 
   const scalarChanges: string[] = [];
-  if (p.title) scalarChanges.push(`New title: “${p.title}”`);
-  if (p.current_intent) scalarChanges.push(`Updated intent`);
-  if (p.original_idea) scalarChanges.push(`Captures the original idea`);
+  if (p.title) scalarChanges.push(`New title — “${p.title}”`);
+  if (p.current_intent) scalarChanges.push('Updated intent');
+  if (p.original_idea) scalarChanges.push('Captures the original idea');
+
+  const isPending = proposal.status === 'pending';
+  const integrating = isPending && busy;
 
   return (
-    <div className={`proposal-card status-${proposal.status}`}>
+    <div className={cn('proposal glass mat-2', `proposal-${proposal.status}`)}>
       <div className="proposal-head">
-        <span className="proposal-title">PROPOSED STATE CHANGES</span>
-        <span className={`proposal-status status-badge-${proposal.status}`}>{proposal.status}</span>
-        {proposal.resulting_version !== undefined && (
-          <span className="proposal-version">→ v{proposal.resulting_version}</span>
-        )}
+        <span className="proposal-label">
+          <Icon name="state" size={13} /> Proposed changes
+        </span>
+        <span className={cn('proposal-status', `st-${proposal.status}`)}>
+          {proposal.status === 'pending' && integrating ? 'integrating…' : proposal.status}
+        </span>
       </div>
 
       {touched.length === 0 && scalarChanges.length === 0 && (
-        <p className="proposal-empty">No state changes in this proposal.</p>
+        <p className="muted proposal-empty">No state changes in this proposal.</p>
       )}
 
       {scalarChanges.length > 0 && (
-        <div className="proposal-section">
-          <div className="section-label">Case</div>
-          <ul className="change-list adds">
-            {scalarChanges.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
+        <ul className="chg-list">
+          {scalarChanges.map((s, i) => (
+            <li key={i} className="chg add">
+              <span className="chg-glyph">+</span>
+              <span>{s}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {touched
         .filter(([, c]) => (c.added?.length ?? 0) > 0)
         .map(([collection, c]) => (
-          <div className="proposal-section" key={collection}>
-            <div className="section-label">Added · {COLLECTION_LABELS[collection] ?? collection}</div>
-            <ul className="change-list adds">
+          <div className="proposal-group" key={collection}>
+            <div className="group-label">{COLLECTION_LABELS[collection] ?? collection}</div>
+            <ul className="chg-list">
               {c.added.map((add, i) => (
-                <li key={i}>
-                  <span className="change-text">{addedText(add)}</span>
-                  {addedSub(add) && <span className="change-sub">{addedSub(add)}</span>}
+                <li key={i} className="chg add">
+                  <span className="chg-glyph">+</span>
+                  <span className="chg-body">
+                    <span className="chg-text">{addedText(add)}</span>
+                    {addedSub(add) && <span className="chg-sub">{addedSub(add)}</span>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -121,16 +127,19 @@ export function ProposalCard({
         ))}
 
       {modifications.length > 0 && (
-        <div className="proposal-section">
-          <div className="section-label">Modified</div>
-          <ul className="change-list mods">
+        <div className="proposal-group">
+          <div className="group-label">Modified</div>
+          <ul className="chg-list">
             {modifications.map(({ collection, mod }, i) => (
-              <li key={i}>
-                <span className="change-id">
-                  {COLLECTION_LABELS[collection] ?? collection} {String(mod.id)}
+              <li key={i} className="chg mod">
+                <span className="chg-glyph">~</span>
+                <span className="chg-body">
+                  <span className="chg-id">
+                    {COLLECTION_LABELS[collection] ?? collection} {String(mod.id)}
+                  </span>
+                  {typeof mod.text === 'string' && mod.text && <span className="chg-text">{mod.text}</span>}
+                  <span className="chg-sub">{String(mod.reason ?? '')}</span>
                 </span>
-                <span className="change-text">{String(mod.text ?? '')}</span>
-                <span className="change-sub">Reason: {String(mod.reason ?? '')}</span>
               </li>
             ))}
           </ul>
@@ -138,17 +147,20 @@ export function ProposalCard({
       )}
 
       {invalidations.length > 0 && (
-        <div className="proposal-section">
-          <div className="section-label">Invalidated / superseded</div>
-          <ul className="change-list invalidations">
+        <div className="proposal-group">
+          <div className="group-label">Invalidated</div>
+          <ul className="chg-list">
             {invalidations.map(({ collection, mod }, i) => (
-              <li key={i}>
-                <span className="change-id">
-                  {COLLECTION_LABELS[collection] ?? collection} {String(mod.id)}
-                </span>
-                <span className="change-text strike">{String(mod.text ?? '')}</span>
-                <span className="change-sub">
-                  {String(mod.status)} — {String(mod.reason ?? '')}
+              <li key={i} className="chg rem">
+                <span className="chg-glyph">−</span>
+                <span className="chg-body">
+                  <span className="chg-id">
+                    {COLLECTION_LABELS[collection] ?? collection} {String(mod.id)}
+                  </span>
+                  {typeof mod.text === 'string' && mod.text && <span className="chg-text strike">{mod.text}</span>}
+                  <span className="chg-sub">
+                    {String(mod.status)} — {String(mod.reason ?? '')}
+                  </span>
                 </span>
               </li>
             ))}
@@ -157,13 +169,13 @@ export function ProposalCard({
       )}
 
       {p.impact_analysis.length > 0 && (
-        <div className="proposal-section">
-          <div className="section-label">Affected areas</div>
+        <div className="proposal-group">
+          <div className="group-label">Affects</div>
           <ul className="impact-list">
             {p.impact_analysis.map((impact, i) => (
               <li key={i}>
                 <span className="impact-area">{impact.area}</span>
-                <span className="change-sub">{impact.effect}</span>
+                {impact.effect && <span className="chg-sub"> {impact.effect}</span>}
               </li>
             ))}
           </ul>
@@ -171,8 +183,10 @@ export function ProposalCard({
       )}
 
       {p.conflicts.length > 0 && (
-        <div className="proposal-conflicts">
-          <div className="section-label conflict-label">⚠ Conflicts detected</div>
+        <div className="conflict-box" role="alert">
+          <div className="conflict-title">
+            <Icon name="alert" size={14} /> Conflicts detected
+          </div>
           {p.conflicts.map((c, i) => (
             <div key={i} className="conflict-item">
               <p>{c.description}</p>
@@ -189,10 +203,9 @@ export function ProposalCard({
       )}
 
       {p.questions.length > 0 && (
-        <div className="proposal-section">
-          <div className="section-label">Suggested next question</div>
+        <div className="proposal-question">
           {p.questions.map((q, i) => (
-            <p key={i} className="question-text">{q}</p>
+            <p key={i}>{q}</p>
           ))}
         </div>
       )}
@@ -205,32 +218,45 @@ export function ProposalCard({
         </div>
       )}
 
-      {p.reasoning_summary && <p className="proposal-reasoning">Reasoning summary: {p.reasoning_summary}</p>}
+      {p.reasoning_summary && (
+        <p className="proposal-reasoning">Reasoning summary: {p.reasoning_summary}</p>
+      )}
 
       <div className="proposal-actions">
-        {proposal.status === 'pending' ? (
+        {isPending ? (
           <>
-            <button className="btn accept" disabled={busy} onClick={() => onAccept(proposal.id)}>
+            <Button
+              variant="accept"
+              icon="check"
+              disabled={busy}
+              onClick={() => onAccept(proposal.id)}
+            >
               Accept
-            </button>
-            <button className="btn reject" disabled={busy} onClick={() => onReject(proposal.id)}>
+            </Button>
+            <Button
+              variant="danger"
+              icon="close"
+              disabled={busy}
+              onClick={() => onReject(proposal.id)}
+            >
               Reject
-            </button>
-            <button className="btn ghost" onClick={() => setInspect((v) => !v)}>
-              {inspect ? 'Hide' : 'Inspect'}
-            </button>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setInspect((v) => !v)}>
+              {inspect ? 'Hide details' : 'Inspect'}
+            </Button>
+            <span className="proposal-provenance">via {proposal.provider}</span>
           </>
         ) : (
           <>
-            <span className={`proposal-resolution res-${proposal.status}`}>
-              {proposal.status === 'accepted' && `Accepted → v${proposal.resulting_version}`}
+            <span className={cn('proposal-resolution', `res-${proposal.status}`)}>
+              {proposal.status === 'accepted' && `Accepted — version ${proposal.resulting_version}`}
               {proposal.status === 'rejected' &&
-                `Rejected${proposal.rejection_reason ? ` — ${proposal.rejection_reason}` : ''}. State unchanged.`}
-              {proposal.status === 'invalid' && 'Automatically rejected (failed validation). State unchanged.'}
+                `Rejected${proposal.rejection_reason ? ` — ${proposal.rejection_reason}` : ''}`}
+              {proposal.status === 'invalid' && 'Rejected automatically — state unchanged'}
             </span>
-            <button className="btn ghost" onClick={() => setInspect((v) => !v)}>
-              {inspect ? 'Hide' : 'Inspect'}
-            </button>
+            <Button variant="ghost" size="sm" onClick={() => setInspect((v) => !v)}>
+              {inspect ? 'Hide details' : 'Inspect'}
+            </Button>
           </>
         )}
       </div>
@@ -238,9 +264,6 @@ export function ProposalCard({
       {inspect && (
         <pre className="proposal-json">{JSON.stringify(proposal.proposal, null, 2)}</pre>
       )}
-      <div className="proposal-provenance">via {proposal.provider}</div>
     </div>
   );
 }
-
-export type { CollectionKey };

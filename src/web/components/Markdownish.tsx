@@ -1,9 +1,9 @@
 import React from 'react';
 
 /**
- * Minimal inline text renderer: paragraphs, "- " bullets, and **bold**.
- * Deliberately tiny — no markdown dependency, no HTML injection (content is
- * rendered as React nodes, never innerHTML).
+ * Minimal inline text renderer: paragraphs, "- " bullets, **bold**.
+ * Rendered as React nodes — never innerHTML — so model output cannot inject
+ * markup. Styling comes from the design system (.md namespace).
  */
 export function Markdownish({ text }: { text: string }) {
   const blocks = text.split(/\n\s*\n/);
@@ -11,7 +11,8 @@ export function Markdownish({ text }: { text: string }) {
     <div className="md">
       {blocks.map((block, i) => {
         const lines = block.split('\n');
-        const isList = lines.length > 0 && lines.every((l) => /^\s*[-*•]\s+/.test(l) || l.trim() === '');
+        const isList =
+          lines.length > 0 && lines.every((l) => /^\s*[-*•]\s+/.test(l) || l.trim() === '');
         if (isList) {
           return (
             <ul className="md-list" key={i}>
@@ -23,7 +24,13 @@ export function Markdownish({ text }: { text: string }) {
             </ul>
           );
         }
-        return <p key={i}>{lines.map((l, j) => (j === 0 ? inline(l) : <React.Fragment key={j}><br />{inline(l)}</React.Fragment>))}</p>;
+        return (
+          <p key={i}>
+            {lines.map((l, j) =>
+              j === 0 ? inline(l) : <React.Fragment key={j}><br />{inline(l)}</React.Fragment>,
+            )}
+          </p>
+        );
       })}
     </div>
   );

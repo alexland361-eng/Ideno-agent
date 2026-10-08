@@ -1,6 +1,6 @@
 import type { ChatEvent, ChatMessage } from '../shared/chat.js';
 import type { StoredProposal, Proposal } from '../shared/schemas/proposal.js';
-import type { VersionRecord } from '../shared/schemas/ideaCase.js';
+import type { VersionRecord, IdeaCase } from '../shared/schemas/ideaCase.js';
 import type { RedactedConfig } from '../shared/config.js';
 
 /**
@@ -9,7 +9,7 @@ import type { RedactedConfig } from '../shared/config.js';
  */
 
 export interface CaseStateResponse {
-  case: import('../shared/schemas/ideaCase.js').IdeaCase;
+  case: IdeaCase;
   versions: Array<{
     number: number;
     id: string;
@@ -41,7 +41,13 @@ async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const message = body?.message ?? `Request failed (HTTP ${res.status})`;
     const detail = (body as { detail?: string[] } | null)?.detail;
-    throw new Error(detail?.length ? `${message} — ${detail.join('; ')}` : message);
+    const err = new Error(detail?.length ? `${message} — ${detail.join('; ')}` : message) as Error & {
+      code?: string;
+      detail?: string[];
+    };
+    err.code = body?.code;
+    err.detail = detail;
+    throw err;
   }
   return body as T;
 }
@@ -62,7 +68,9 @@ export async function fetchVersion(n: number): Promise<{ version: VersionRecord 
   return json(await fetch(`/api/versions/${n}`));
 }
 
-export async function acceptProposal(id: string): Promise<CaseStateResponse['case']> {
+export async function acceptProposal(
+  id: string,
+): Promise<{ case: IdeaCase; version: { number: number; summary: string; created_at: string } }> {
   const res = await fetch(`/api/proposals/${id}/accept`, { method: 'POST' });
   return json(res);
 }
@@ -78,6 +86,16 @@ export async function rejectProposal(id: string, reason?: string): Promise<Store
 
 export async function resetCase(): Promise<CaseStateResponse> {
   return json(await fetch('/api/case/reset', { method: 'POST' }));
+}
+
+/** Research search — throws a classified error when no provider is configured. */
+export async function researchSearch(question: string, keywords?: string[]): Promise<unknown> {
+  const res = await fetch('/api/research', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question, keywords }),
+  });
+  return json(res);
 }
 
 /**

@@ -1,0 +1,191 @@
+/* ============================================================================
+   IDENO DESIGN TOKENS — the single source of truth for the material system.
+
+   Layers (§3):  environment → mat-1 (primary panes) → mat-2 (nested cards,
+   NO blur) → mat-3 (floating: sheets, palette, popovers, toasts) → controls.
+
+   Light is the default; [data-theme="dark"] overrides with intentionally
+   designed values — dark is NOT an inversion (§5).
+   ========================================================================== */
+
+:root {
+  /* ---- spacing (4px base) ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ---- radii ---- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* ---- motion (§23) ---- */
+  --m-fast: 140ms;
+  --m-normal: 240ms;
+  --m-slow: 400ms;
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
+
+  /* ---- z-index ---- */
+  --z-pane: 1;
+  --z-nav: 10;
+  --z-topbar: 20;
+  --z-overlay: 90;
+  --z-sheet: 100;
+  --z-palette: 200;
+  --z-toast: 300;
+
+  /* ---- typography (§26: native system stack, no webfonts) ---- */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --t-display: 600 clamp(20px, 2.2vw, 25px) / 1.2 var(--font-ui);
+  --t-title: 600 16px / 1.3 var(--font-ui);
+  --t-section: 600 13px / 1.3 var(--font-ui);
+  --t-body: 400 14px / 1.55 var(--font-ui);
+  --t-meta: 400 12px / 1.45 var(--font-ui);
+  --t-label: 650 10.5px / 1.2 var(--font-ui);
+  --t-label-tracking: 0.05em;
+
+  /* ---- semantic accents (§4: meaning, not decoration) ---- */
+  --accent: #3f66e0;            /* information / active */
+  --accent-soft: rgba(63, 102, 224, 0.12);
+  --accent-strong: #2c4fc4;
+  --ok: #23834e;                /* accepted / verified */
+  --ok-soft: rgba(35, 131, 78, 0.12);
+  --warn: #a96a12;              /* uncertainty / attention */
+  --warn-soft: rgba(169, 106, 18, 0.12);
+  --danger: #c23b36;            /* conflict / error */
+  --danger-soft: rgba(194, 59, 54, 0.10);
+  --explore: #7650d8;           /* AI-generated possibility */
+  --explore-soft: rgba(118, 80, 216, 0.10);
+  --teal: #0f7d84;
+
+  --focus-ring: rgba(63, 102, 224, 0.55);
+
+  /* ---- LIGHT appearance (§5: translucent white, soft shadows) ---- */
+  --env-base: #e7ebf2;
+  --env-light: rgba(255, 255, 255, 0.85);
+  --env-tint-a: rgba(120, 145, 210, 0.16);
+  --env-tint-b: rgba(150, 190, 200, 0.12);
+
+  --ink: #232a38;
+  --ink-dim: #59627a;
+  --ink-faint: #8a91a6;
+
+  --mat-1-bg: rgba(255, 255, 255, 0.60);
+  --mat-1-blur: 26px;
+  --mat-1-sat: 150%;
+  --mat-1-border: rgba(28, 38, 66, 0.10);
+  --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  --mat-1-shadow: 0 12px 40px rgba(38, 52, 92, 0.14);
+
+  --mat-2-bg: rgba(255, 255, 255, 0.48);
+  --mat-2-bg-hover: rgba(255, 255, 255, 0.72);
+  --mat-2-border: rgba(28, 38, 66, 0.07);
+
+  --mat-3-bg: rgba(252, 253, 255, 0.80);
+  --mat-3-blur: 38px;
+  --mat-3-border: rgba(28, 38, 66, 0.12);
+  --mat-3-shadow: 0 24px 70px rgba(30, 42, 80, 0.24);
+
+  --control-bg: rgba(30, 42, 74, 0.055);
+  --control-bg-hover: rgba(30, 42, 74, 0.10);
+  --control-bg-active: rgba(30, 42, 74, 0.14);
+  --control-border: rgba(28, 38, 66, 0.08);
+
+  --composer-bg: rgba(255, 255, 255, 0.66);
+
+  --bubble-user: rgba(63, 102, 224, 0.14);
+  --bubble-user-border: rgba(63, 102, 224, 0.22);
+  --bubble-ai: rgba(255, 255, 255, 0.55);
+  --bubble-ai-border: rgba(28, 38, 66, 0.08);
+
+  --divider: rgba(28, 38, 66, 0.09);
+  --scrim: rgba(30, 36, 54, 0.32);
+
+  --chip-ink: #4c5568;
+  --scrollbar: rgba(40, 52, 84, 0.22);
+}
+
+[data-theme='dark'] {
+  /* ---- DARK appearance (§5: translucent graphite, restrained luminance) ---- */
+  --env-base: #0b0d13;
+  --env-light: rgba(70, 84, 122, 0.10);
+  --env-tint-a: rgba(96, 122, 200, 0.11);
+  --env-tint-b: rgba(78, 148, 152, 0.07);
+
+  --ink: #e9ecf4;
+  --ink-dim: #a7aec4;
+  --ink-faint: #6f7590;
+
+  --accent: #7d9cff;
+  --accent-soft: rgba(125, 156, 255, 0.14);
+  --accent-strong: #9db6ff;
+  --ok: #63cf92;
+  --ok-soft: rgba(99, 207, 146, 0.12);
+  --warn: #e3aa54;
+  --warn-soft: rgba(227, 170, 84, 0.12);
+  --danger: #ef8078;
+  --danger-soft: rgba(239, 128, 120, 0.12);
+  --explore: #b195f8;
+  --explore-soft: rgba(177, 149, 248, 0.13);
+  --teal: #6fd4d6;
+
+  --focus-ring: rgba(125, 156, 255, 0.6);
+
+  --mat-1-bg: rgba(24, 28, 42, 0.62);
+  --mat-1-blur: 26px;
+  --mat-1-sat: 140%;
+  --mat-1-border: rgba(255, 255, 255, 0.085);
+  --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --mat-1-shadow: 0 14px 44px rgba(2, 4, 10, 0.45);
+
+  --mat-2-bg: rgba(120, 132, 168, 0.09);
+  --mat-2-bg-hover: rgba(120, 132, 168, 0.16);
+  --mat-2-border: rgba(255, 255, 255, 0.055);
+
+  --mat-3-bg: rgba(30, 35, 52, 0.82);
+  --mat-3-blur: 38px;
+  --mat-3-border: rgba(255, 255, 255, 0.12);
+  --mat-3-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+
+  --control-bg: rgba(158, 172, 214, 0.08);
+  --control-bg-hover: rgba(158, 172, 214, 0.14);
+  --control-bg-active: rgba(158, 172, 214, 0.19);
+  --control-border: rgba(255, 255, 255, 0.07);
+
+  --composer-bg: rgba(21, 25, 39, 0.72);
+
+  --bubble-user: rgba(125, 156, 255, 0.16);
+  --bubble-user-border: rgba(125, 156, 255, 0.24);
+  --bubble-ai: rgba(120, 132, 168, 0.10);
+  --bubble-ai-border: rgba(255, 255, 255, 0.06);
+
+  --divider: rgba(255, 255, 255, 0.08);
+  --scrim: rgba(4, 6, 12, 0.55);
+
+  --chip-ink: #a9b1c8;
+  --scrollbar: rgba(180, 192, 228, 0.18);
+}
+
+/* ---- graceful degradation (§43): without backdrop-filter, surfaces become
+   more opaque so text stays readable; layout and function are unaffected. --- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --mat-1-bg: rgba(248, 250, 253, 0.96);
+    --mat-3-bg: rgba(250, 251, 254, 0.98);
+    --composer-bg: rgba(250, 251, 254, 0.97);
+  }
+  [data-theme='dark'] {
+    --mat-1-bg: rgba(23, 27, 40, 0.97);
+    --mat-3-bg: rgba(28, 33, 49, 0.985);
+    --composer-bg: rgba(20, 24, 37, 0.98);
+  }
+}

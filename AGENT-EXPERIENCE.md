@@ -161,3 +161,65 @@ bundled with esbuild `--packages=external`).
   explicit note to fall back to `json_object`/`none` if the endpoint rejects it —
   per-model support varies and was NOT verifiable from here (do not claim capabilities
   you cannot test).
+
+## 2026-10-08 — Liquid Glass UI (v0.2.0)
+
+### Scope discipline
+
+The redesign touched only `src/web/` plus dev tooling (vitest config, two dev
+dependencies). Server, domain, and API contracts are byte-identical to v0.1.1 —
+verified by the untouched 93-test server suite passing alongside the new UI
+tests. The UI renders what the server validates; it owns no business logic.
+
+### Key decisions and why
+
+1. **Three material levels, not "blur everything".** `mat-1` panes use
+   `backdrop-filter`; `mat-2` nested cards deliberately do NOT (solid tinted
+   fills). Two reasons: an ancestor with `backdrop-filter` becomes a containing
+   block that breaks `position: fixed` descendants, and stacking blurred
+   surfaces on blurred surfaces is both a perf cost and visually muddy. All
+   fixed/portal surfaces (sheets, palette, toasts) render to `document.body`.
+2. **Dark theme is a designed palette, not `filter: invert()`.** Tokens live in
+   `styles/tokens.css` as CSS custom properties keyed by `data-theme`; a
+   pre-paint script in `index.html` applies the stored value before React
+   boots, so there is no light-mode flash on reload.
+3. **Zero new runtime dependencies.** React 19 + the existing stack only.
+   Icons are hand-rolled 24×24 strokes (~30) in one file; markdown is rendered
+   by a small React-node renderer, not `innerHTML`, to keep the XSS surface at
+   zero. `@testing-library/react` and `happy-dom` are dev-only.
+4. **UI tests double the network, explicitly.** `tests/web.ui.test.tsx` serves
+   an in-memory mock of the documented API (including a hand-rolled SSE
+   Response-like object with a ReadableStream reader). The file's header
+   states this plainly: these tests verify UI behavior against the contract,
+   not real backend integration — that is covered by the node e2e suite.
+
+### Problems found and fixed
+
+- **happy-dom's viewport is 1024px**, which trips the ≤1180px narrow-mode
+  media query: the state pane is an overlay there and the first six test
+  failures were all this one environmental fact. Tests now stub `matchMedia`
+  to report the desktop layout (the suite exercises §33; the recomposition
+  itself is component logic, not pixel rendering).
+- **A real bug the tests caught**: selecting a state item from the command
+  palette called `setDetail(...)` but the inspector sheet is hosted inside the
+  state pane, which is unmounted in narrow mode — so on narrow screens the
+  palette silently did nothing. Fixed by revealing the pane before opening the
+  sheet. Worth remembering: hosting portal-ish surfaces inside a
+  conditionally-mounted pane couples two concerns that only break on the
+  small-screen path desktop development never exercises.
+- **RTL text-matching discipline**: `getByText` fails on *multiple* matches,
+  which is correct behavior. Version chips, item text, and knowledge badges
+  legitimately appear in several places (topbar + state pane, card + state,
+  pane + related-items in the sheet). The suite scopes assertions with
+  `{ selector: ... }` instead of weakening to `queryAllByText(...).length > 0`
+  where a specific surface is the point of the assertion.
+
+### Verification status (do not overstate)
+
+- Verified: 105/105 tests, strict typecheck, production build, and an HTTP-level
+  end-to-end pass against the real server (chat → SSE → proposal → accept →
+  version + semantic diff; served CSS contains the material/theme/reduced-motion
+  blocks; index.html references the new hashed assets).
+- NOT verified: actual browser rendering. No browser exists in the sandbox —
+  layout, materials, animation feel, and responsive recomposition need human
+  eyeballs on `npm start`.

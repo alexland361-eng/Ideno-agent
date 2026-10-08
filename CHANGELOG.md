@@ -1,5 +1,75 @@
 # Changelog
 
+## 2026-10-08 — v0.2.0
+
+### Added
+
+- **Liquid Glass web interface** — full redesign of the client per the UI
+  specification. The backend, domain logic, and API contracts are unchanged.
+  - **Material system**: three real material levels — `mat-1` blurred panes
+    (topbar, nav rail, state pane), `mat-2` opaque nested cards (no
+    `backdrop-filter`, for composability and performance), `mat-3` floating
+    overlays (sheets, palette, toasts). An `@supports` fallback degrades the
+    blurred surfaces to solid tints where `backdrop-filter` is unavailable.
+  - **Theming**: light / dark / system appearance with a pre-paint script
+    (no flash), semantic accents (blue info, green accepted, orange uncertain,
+    red conflict, purple AI exploration), and a full design-token stylesheet
+    (`src/web/styles/tokens.css`) — dark is a designed palette, not an inversion.
+  - **Spatial layout**: topbar + nav rail + conversation workspace + persistent
+    Idea State pane. The pane is resizable (320–620px, persisted to
+    `localStorage`), becomes an overlay ≤1180px, and the app recomposes to a
+    tab bar with a full-screen state view ≤900px.
+  - **Idea State as the centerpiece**: 13 collapsible collections with
+    knowledge-class badges, inspector detail sheets for every item (provenance,
+    related evidence/decisions), and highlight pulses linking conversation
+    events to the state items they touched.
+  - **Review cards**: proposals grouped as added / modified / invalidated,
+    with impact analysis, conflicts, warnings, and the model's reasoning
+    summary — accept / reject / inspect from the conversation.
+  - **Command palette (⌘K)**: commands plus global search over state items,
+    versions, and messages, with full keyboard navigation.
+  - **History timeline**: semantic per-collection diffs (not Git-style hunks),
+    lazily loaded per version.
+  - **Settings**: appearance, provider health cards merged with live runtime
+    status (real `/api/health` data — nothing fabricated), keyboard shortcuts,
+    and a reset danger zone with confirmation.
+  - **Honest surfaces**: the demo provider is labeled everywhere it appears
+    (banner + DEMO tags); the research view states plainly that no research
+    provider is configured rather than showing fake results.
+  - Accessibility: focus trap in sheets/palette, `prefers-reduced-motion`
+    support, aria labels on all icon-only controls.
+
+### Changed
+
+- `src/web/` restructured: `styles/` (tokens + app), `components/` (glass
+  primitives, icons, conversation, state panel, palette, toasts, markdown),
+  `views/` (history, research, settings). Old single-file UI removed.
+- Dev dependencies: `@testing-library/react` and `happy-dom` for UI tests
+  (in-memory DOM; the app itself has zero new runtime dependencies).
+- `vitest.config.ts` defaults to a node environment; UI test files opt into
+  happy-dom via `// @vitest-environment happy-dom`.
+
+### Fixed
+
+- Selecting a state item from the command palette on narrow screens now
+  reveals the state pane before opening the inspector sheet (previously the
+  sheet was hosted in the unmounted pane and never appeared).
+
+### Verification status
+
+- Verified: typecheck clean; full suite **105 tests passing** (93 server-side
+  + 12 new UI tests covering navigation, message submission and streaming,
+  state rendering, proposal accept/reject, history/diffs, palette search and
+  keyboard use, appearance cycling, error surfacing, and the reset flow —
+  all against an in-memory mock of the documented API contract, labeled as
+  such in the test file). Production build succeeds (85 KB gzipped JS,
+  7.9 KB gzipped CSS). End-to-end sanity pass against the real server over
+  HTTP: chat → SSE stream → proposal → accept → version created with a
+  semantic diff.
+- NOT verified: real-browser rendering (no browser available in the build
+  sandbox). Layout, materials, and animations should be eyeballed via
+  `npm start` → http://localhost:8787.
+
 ## 2026-10-08 — v0.1.1
 
 ### Added
