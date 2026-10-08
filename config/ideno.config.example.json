@@ -1,0 +1,86 @@
+{
+  "$comment": [
+    "Ideno provider configuration (§10).",
+    "Copy to config/ideno.config.json and adapt. That file is gitignored.",
+    "Secrets: prefer api_key_env (read from the environment) over api_key in the file.",
+    "The browser NEVER receives provider configuration — only a redacted view (provider ids, models, origins).",
+    "Privacy modes: LOCAL_ONLY (never send data to cloud providers), PREFERRED_LOCAL (try local first), CLOUD_ALLOWED (routing order as configured), CLOUD_ONLY (local providers excluded).",
+    "structured_output: 'json_schema' (native structured outputs), 'json_object' (valid JSON but schema enforced only by Ideno), 'none' (prompt-based; Ideno validates and repairs once)."
+  ],
+  "server": { "host": "0.0.0.0", "port": 8787 },
+  "data_dir": "data",
+  "privacy_mode": "CLOUD_ALLOWED",
+
+  "providers": {
+    "local-ollama": {
+      "type": "openai_compatible",
+      "display_name": "Ollama (local)",
+      "base_url": "http://localhost:11434/v1",
+      "model": "llama3.1:8b",
+      "privacy": "local",
+      "structured_output": "json_schema",
+      "timeout_ms": 180000,
+      "$note": "Ollama serves an OpenAI-compatible API; no key needed. For older builds that reject json_schema, set structured_output to json_object or none."
+    },
+
+    "local-vllm": {
+      "type": "openai_compatible",
+      "display_name": "vLLM (local)",
+      "base_url": "http://localhost:8000/v1",
+      "model": "Qwen/Qwen2.5-7B-Instruct",
+      "privacy": "local",
+      "api_key_env": "VLLM_API_KEY",
+      "structured_output": "json_schema",
+      "include_usage_in_stream": true,
+      "$note": "vLLM supports guided structured output and stream usage. 'local' here means user-controlled infrastructure — it does NOT have to be localhost."
+    },
+
+    "remote-selfhosted": {
+      "type": "openai_compatible",
+      "display_name": "Self-hosted (remote)",
+      "base_url": "https://inference.example.internal/v1",
+      "model": "your-model",
+      "privacy": "cloud",
+      "api_key_env": "SELFHOSTED_API_KEY",
+      "$note": "A remote endpoint you control. Declared privacy 'cloud' because data leaves your machine — privacy declarations must be honest, not aspirational."
+    },
+
+    "cloud-openai": {
+      "type": "openai_compatible",
+      "display_name": "OpenAI",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4o-mini",
+      "privacy": "cloud",
+      "api_key_env": "OPENAI_API_KEY",
+      "$note": "Requests go browser → Ideno backend → provider. The key never reaches the browser."
+    },
+
+    "gateway": {
+      "type": "openai_compatible",
+      "display_name": "Model gateway",
+      "base_url": "https://your-gateway.example.com/v1",
+      "model": "any/model-name",
+      "privacy": "cloud",
+      "api_key_env": "GATEWAY_API_KEY",
+      "$note": "Aggregators/gateways (OpenRouter-style) work like any OpenAI-compatible endpoint."
+    },
+
+    "demo": {
+      "type": "demo",
+      "display_name": "Scripted demo (not AI)",
+      "privacy": "local",
+      "model": "scripted-demo-v0",
+      "$note": "DETERMINISTIC SCRIPTED PROVIDER — NOT AN AI MODEL. Ships as the safe default so a fresh clone boots and the state pipeline can be demonstrated without any model. Clearly labeled as a demo in the UI. Replace it with a real provider for actual idea development."
+    }
+  },
+
+  "routing": {
+    "conversation": { "provider": "local-ollama", "fallbacks": ["cloud-openai", "demo"] },
+    "$note": "Per-task routing (§11): primary provider, then fallbacks. v0.1 has one task ('conversation'); the table exists so per-task model selection can be added without touching the core. Fallbacks are filtered by the privacy mode — LOCAL_ONLY will never fall back to a cloud provider."
+  },
+
+  "context": {
+    "recent_messages": 10,
+    "$note": "How many recent conversation messages are sent as supporting context. The Idea State itself is always sent (it is canonical); the conversation is not."
+  }
+}
