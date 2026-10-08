@@ -223,3 +223,23 @@ tests. The UI renders what the server validates; it owns no business logic.
 - NOT verified: actual browser rendering. No browser exists in the sandbox —
   layout, materials, animation feel, and responsive recomposition need human
   eyeballs on `npm start`.
+
+### Post-review revision (same day): achromatic glass
+
+First visual review of v0.2.0 read as *blue*: not because any single token
+was blue, but because the environment base was blue-gray (#e7ebf2), the
+atmospheric blobs were blue/teal, and every material border/shadow/fill used
+blue-tinted neutrals (rgba(28,38,66,…), rgba(120,132,168,…)). All of it
+composites — a white pane at 60% over a blue wash is blue glass.
+
+Revision: the token file now enforces a hard rule — **hue exists only in the
+semantic accent tokens** (§4), on small controls and signals. Surfaces,
+borders, shadows, inks, environment: achromatic. Transparency raised at every
+level (mat-1 0.60→0.42, mat-2 0.48→0.28, mat-3 0.80→0.68); the blur, not the
+opacity, provides legibility. The neutral environment keeps *tonal* gradients
+(dark/light gray blobs) so the backdrop-filter has something to soften —
+flat white would make the glass read as plain opacity.
+
+Verification note: a scan of the built CSS for blue-dominant rgba channels
+(B − max(R,G) > 12) returns zero matches; remaining blues are the semantic
+hex tokens (accent, focus ring) by design.

@@ -41,6 +41,12 @@
 
 ### Changed
 
+- **Glass is achromatic (post-review revision)**: every surface, border,
+  shadow, and environment tint is neutral white/gray/black. Hue appears only
+  on the small semantic accents (§4) — the glass itself never carries color.
+  Material transparency increased (panes 0.42, cards 0.28, overlays 0.68 in
+  light; comparable in dark): the blur does the work of legibility, not
+  opacity. User bubbles are frosted gray, Ideno bubbles clear white.
 - `src/web/` restructured: `styles/` (tokens + app), `components/` (glass
   primitives, icons, conversation, state panel, palette, toasts, markdown),
   `views/` (history, research, settings). Old single-file UI removed.
