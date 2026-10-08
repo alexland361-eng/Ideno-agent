@@ -243,3 +243,33 @@ flat white would make the glass read as plain opacity.
 Verification note: a scan of the built CSS for blue-dominant rgba channels
 (B − max(R,G) > 12) returns zero matches; remaining blues are the semantic
 hex tokens (accent, focus ring) by design.
+
+### Second post-review revision: fully monochrome
+
+The first achromatic pass still read as blue. Three distinct sources, found
+in order of visibility:
+
+1. **The §4 semantic accent system was still hue.** The send button, primary
+   and accept buttons, focus rings, text selection, links, selected palette
+   rows, timeline nodes, and knowledge badges all used the blue accent (and
+   green/orange/red/purple status hues). A "neutral glass + colored accents"
+   split still reads as "blue all over" when the accents sit on every
+   interactive element. Resolution: the whole UI is monochrome by user
+   directive — the semantic tokens remain (names intact, 102 consumers) but
+   now resolve to a neutral ink ramp (full ink for accent/ok/danger, mid
+   gray for warn/explore/teal). Meaning is carried by tone, icons, and text.
+   Tradeoff flagged to the user: hue-based semantics from §4 are retired.
+2. **Three blue box-shadows** (`rgba(20, 28, 52, …)`) survived the first pass
+   because the audit grep filtered out lines containing `var(--` — and those
+   lines legitimately contained both a token AND a literal. Lesson: audit
+   literals with NO other filter, and run the scanner on the BUILT css, not
+   the source (the minifier also folds rgba→#rrggbbaa, which an rgba-only
+   regex misses).
+3. **The "neutral" grays weren't**: the ink ramp carried a +6…+9 blue-channel
+   bias (#6b6b74 etc.) — invisible as a number, visible as a cast. Every
+   value is now exactly R=G=B, enforced by a scanner that fails on any
+   channel spread > 0 across hex, rgb()/rgba(), and hsl() in the built
+   output, both themes (the @supports fallbacks included).
+
+The scanner is the lasting artifact of this round: "looks neutral" is not a
+verification state. Run the channel scan on dist, not on source.

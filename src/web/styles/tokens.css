@@ -7,9 +7,10 @@
    Light is the default; [data-theme="dark"] overrides with intentionally
    designed values — dark is NOT an inversion (§5).
 
-   GLASS IS ACHROMATIC: every surface, border, shadow, and environment tint
-   is neutral (white / gray / black). Hue belongs ONLY to the small semantic
-   accents below (§4) — the glass itself never carries color.
+   FULLY ACHROMATIC (user directive): the interface carries ZERO hue —
+   surfaces, borders, shadows, environment, accents, focus rings, and
+   selection are all neutral white / gray / black. State meaning is carried
+   by tone strength, icons, and text labels, never by color.
    Transparency: panes let the environment read through (blur does the work
    of legibility, not opacity).
    ========================================================================== */
@@ -59,23 +60,27 @@
   --t-label: 650 10.5px / 1.2 var(--font-ui);
   --t-label-tracking: 0.05em;
 
-  /* ---- semantic accents (§4: meaning, not decoration) ----
-     The ONLY place hue is allowed. Used on small controls and signals,
-     never on the glass surfaces themselves. */
-  --accent: #3f66e0;            /* information / active */
-  --accent-soft: rgba(63, 102, 224, 0.12);
-  --accent-strong: #2c4fc4;
-  --ok: #23834e;                /* accepted / verified */
-  --ok-soft: rgba(35, 131, 78, 0.12);
-  --warn: #a96a12;              /* uncertainty / attention */
-  --warn-soft: rgba(169, 106, 18, 0.12);
-  --danger: #c23b36;            /* conflict / error */
-  --danger-soft: rgba(194, 59, 54, 0.10);
-  --explore: #7650d8;           /* AI-generated possibility */
-  --explore-soft: rgba(118, 80, 216, 0.10);
-  --teal: #0f7d84;
+  /* ---- semantic accents: MONOCHROME RAMP (user directive: no colour) ----
+     The interface carries zero hue. State meaning is communicated by tone
+     (ink strength), icons, and text labels — never by color. Token names are
+     kept so every consumer reads intent; values are a neutral ink ramp:
+       accent / ok / danger -> full ink (primary, accepted, conflict all read
+                                as strongest-contrast states)
+       warn / explore / teal -> mid gray (secondary, softer states)      */
+  --accent: #1d1d1d;            /* information / active / primary action */
+  --accent-soft: rgba(0, 0, 0, 0.075);
+  --accent-strong: #000000;
+  --ok: #1d1d1d;                /* accepted / verified */
+  --ok-soft: rgba(0, 0, 0, 0.06);
+  --warn: #6b6b6b;              /* uncertainty / attention */
+  --warn-soft: rgba(0, 0, 0, 0.05);
+  --danger: #1d1d1d;            /* conflict / error */
+  --danger-soft: rgba(0, 0, 0, 0.085);
+  --explore: #6b6b6b;           /* AI-generated possibility */
+  --explore-soft: rgba(0, 0, 0, 0.045);
+  --teal: #6b6b6b;
 
-  --focus-ring: rgba(63, 102, 224, 0.55);
+  --focus-ring: rgba(0, 0, 0, 0.45);
 
   /* ---- LIGHT appearance: clear neutral glass ---- */
   --env-base: #ececec;                       /* neutral gray, no hue */
@@ -83,83 +88,83 @@
   --env-tint-a: rgba(0, 0, 0, 0.030);        /* neutral atmospheric shading — */
   --env-tint-b: rgba(0, 0, 0, 0.016);        /* tonal depth for the blur, zero chroma */
 
-  --ink: #26262b;
-  --ink-dim: #5d5d66;
-  --ink-faint: #8a8a93;
+  --ink: #262626;
+  --ink-dim: #5d5d5d;
+  --ink-faint: #8a8a8a;
 
-  --mat-1-bg: rgba(255, 255, 255, 0.42);
+  --mat-1-bg: rgba(255, 255, 255, 0.36);
   --mat-1-blur: 26px;
   --mat-1-sat: 130%;
-  --mat-1-border: rgba(61, 61, 67, 0.11);
+  --mat-1-border: rgba(61, 61, 61, 0.11);
   --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.65);
   --mat-1-shadow: 0 12px 40px rgba(0, 0, 0, 0.11);
 
-  --mat-2-bg: rgba(255, 255, 255, 0.28);
-  --mat-2-bg-hover: rgba(255, 255, 255, 0.48);
-  --mat-2-border: rgba(61, 61, 67, 0.08);
+  --mat-2-bg: rgba(255, 255, 255, 0.22);
+  --mat-2-bg-hover: rgba(255, 255, 255, 0.42);
+  --mat-2-border: rgba(61, 61, 61, 0.08);
 
-  --mat-3-bg: rgba(255, 255, 255, 0.68);
+  --mat-3-bg: rgba(255, 255, 255, 0.62);
   --mat-3-blur: 38px;
-  --mat-3-border: rgba(61, 61, 67, 0.13);
+  --mat-3-border: rgba(61, 61, 61, 0.13);
   --mat-3-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
 
-  --control-bg: rgba(61, 61, 67, 0.06);
-  --control-bg-hover: rgba(61, 61, 67, 0.11);
-  --control-bg-active: rgba(61, 61, 67, 0.15);
-  --control-border: rgba(61, 61, 67, 0.09);
+  --control-bg: rgba(61, 61, 61, 0.06);
+  --control-bg-hover: rgba(61, 61, 61, 0.11);
+  --control-bg-active: rgba(61, 61, 61, 0.15);
+  --control-border: rgba(61, 61, 61, 0.09);
 
-  --composer-bg: rgba(255, 255, 255, 0.50);
+  --composer-bg: rgba(255, 255, 255, 0.46);
 
-  --bubble-user: rgba(61, 61, 67, 0.09);      /* frosted gray — user */
-  --bubble-user-border: rgba(61, 61, 67, 0.16);
-  --bubble-ai: rgba(255, 255, 255, 0.42);     /* clear white — Ideno */
-  --bubble-ai-border: rgba(61, 61, 67, 0.09);
+  --bubble-user: rgba(61, 61, 61, 0.09);      /* frosted gray — user */
+  --bubble-user-border: rgba(61, 61, 61, 0.16);
+  --bubble-ai: rgba(255, 255, 255, 0.36);     /* clear white — Ideno */
+  --bubble-ai-border: rgba(61, 61, 61, 0.09);
 
-  --divider: rgba(61, 61, 67, 0.10);
+  --divider: rgba(61, 61, 61, 0.10);
   --scrim: rgba(0, 0, 0, 0.30);
 
-  --chip-ink: #54545c;
-  --scrollbar: rgba(61, 61, 67, 0.26);
+  --chip-ink: #545454;
+  --scrollbar: rgba(61, 61, 61, 0.26);
 }
 
 [data-theme='dark'] {
   /* ---- DARK appearance: neutral graphite glass, restrained luminance ---- */
-  --env-base: #0b0b0d;
+  --env-base: #0b0b0b;
   --env-light: rgba(255, 255, 255, 0.05);
   --env-tint-a: rgba(255, 255, 255, 0.045);
   --env-tint-b: rgba(255, 255, 255, 0.025);
 
-  --ink: #ebebee;
-  --ink-dim: #a9a9b1;
-  --ink-faint: #70707a;
+  --ink: #ebebeb;
+  --ink-dim: #a9a9a9;
+  --ink-faint: #707070;
 
-  --accent: #7d9cff;
-  --accent-soft: rgba(125, 156, 255, 0.14);
-  --accent-strong: #9db6ff;
-  --ok: #63cf92;
-  --ok-soft: rgba(99, 207, 146, 0.12);
-  --warn: #e3aa54;
-  --warn-soft: rgba(227, 170, 84, 0.12);
-  --danger: #ef8078;
-  --danger-soft: rgba(239, 128, 120, 0.12);
-  --explore: #b195f8;
-  --explore-soft: rgba(177, 149, 248, 0.13);
-  --teal: #6fd4d6;
+  --accent: #f2f2f2;
+  --accent-soft: rgba(255, 255, 255, 0.11);
+  --accent-strong: #ffffff;
+  --ok: #f2f2f2;
+  --ok-soft: rgba(255, 255, 255, 0.09);
+  --warn: #b3b3b3;
+  --warn-soft: rgba(255, 255, 255, 0.075);
+  --danger: #f2f2f2;
+  --danger-soft: rgba(255, 255, 255, 0.13);
+  --explore: #b3b3b3;
+  --explore-soft: rgba(255, 255, 255, 0.065);
+  --teal: #b3b3b3;
 
-  --focus-ring: rgba(125, 156, 255, 0.6);
+  --focus-ring: rgba(255, 255, 255, 0.5);
 
-  --mat-1-bg: rgba(30, 30, 32, 0.52);
+  --mat-1-bg: rgba(30, 30, 30, 0.48);
   --mat-1-blur: 26px;
   --mat-1-sat: 120%;
   --mat-1-border: rgba(255, 255, 255, 0.09);
   --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
   --mat-1-shadow: 0 14px 44px rgba(0, 0, 0, 0.48);
 
-  --mat-2-bg: rgba(255, 255, 255, 0.055);
-  --mat-2-bg-hover: rgba(255, 255, 255, 0.10);
+  --mat-2-bg: rgba(255, 255, 255, 0.05);
+  --mat-2-bg-hover: rgba(255, 255, 255, 0.09);
   --mat-2-border: rgba(255, 255, 255, 0.06);
 
-  --mat-3-bg: rgba(32, 32, 34, 0.74);
+  --mat-3-bg: rgba(32, 32, 32, 0.70);
   --mat-3-blur: 38px;
   --mat-3-border: rgba(255, 255, 255, 0.12);
   --mat-3-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
@@ -169,7 +174,7 @@
   --control-bg-active: rgba(255, 255, 255, 0.17);
   --control-border: rgba(255, 255, 255, 0.08);
 
-  --composer-bg: rgba(24, 24, 26, 0.60);
+  --composer-bg: rgba(24, 24, 24, 0.56);
 
   --bubble-user: rgba(255, 255, 255, 0.11);
   --bubble-user-border: rgba(255, 255, 255, 0.18);
@@ -179,7 +184,7 @@
   --divider: rgba(255, 255, 255, 0.09);
   --scrim: rgba(0, 0, 0, 0.55);
 
-  --chip-ink: #b3b3bb;
+  --chip-ink: #b3b3b3;
   --scrollbar: rgba(255, 255, 255, 0.19);
 }
 
@@ -187,13 +192,13 @@
    more opaque so text stays readable; layout and function are unaffected. --- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
-    --mat-1-bg: rgba(248, 248, 250, 0.96);
-    --mat-3-bg: rgba(250, 250, 251, 0.98);
-    --composer-bg: rgba(250, 250, 251, 0.97);
+    --mat-1-bg: rgba(248, 248, 248, 0.96);
+    --mat-3-bg: rgba(250, 250, 250, 0.98);
+    --composer-bg: rgba(250, 250, 250, 0.97);
   }
   [data-theme='dark'] {
-    --mat-1-bg: rgba(24, 24, 26, 0.97);
-    --mat-3-bg: rgba(29, 29, 31, 0.985);
-    --composer-bg: rgba(21, 21, 23, 0.98);
+    --mat-1-bg: rgba(24, 24, 24, 0.97);
+    --mat-3-bg: rgba(29, 29, 29, 0.985);
+    --composer-bg: rgba(21, 21, 21, 0.98);
   }
 }
