@@ -206,7 +206,7 @@ export class Orchestrator {
   async *handleUserMessage(
     text: string,
     signal?: AbortSignal,
-    opts?: { deep?: boolean },
+    opts?: { deep?: boolean; runtime?: AIRuntime },
   ): AsyncGenerator<ChatEvent, TurnOutcome | undefined> {
     const trimmed = text.trim();
     if (!trimmed) {
@@ -239,7 +239,8 @@ export class Orchestrator {
     let providerLabel = 'unknown';
 
     try {
-      const gen = this.runtime.streamStructured<OrchestratorEnvelope>({
+      const turnRuntime = opts?.runtime ?? this.runtime;
+      const gen = turnRuntime.streamStructured<OrchestratorEnvelope>({
         task: 'conversation',
         system,
         messages,
@@ -320,7 +321,7 @@ export class Orchestrator {
         yield { type: 'status', phase: 'critiquing' };
         try {
           const crit = buildCritiqueMessages(this.caseData, envelope.proposal, trimmed);
-          const critRun = await this.runtime.runStructured<CritiqueType>({
+          const critRun = await (opts?.runtime ?? this.runtime).runStructured<CritiqueType>({
             task: 'critique',
             system: crit.system,
             messages: crit.messages,

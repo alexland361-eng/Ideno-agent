@@ -2428,3 +2428,31 @@ s {
   color: var(--ok);
   font-weight: 700;
 }
+
+/* ---------- account + provider keys editor ---------- */
+
+.provider-editor {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.provider-editor .connection-controls {
+  margin-top: 0;
+}
+.provider-editor .text-input {
+  min-width: 140px;
+}
+.linkbtn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+.linkbtn:hover {
+  text-decoration: underline;
+}

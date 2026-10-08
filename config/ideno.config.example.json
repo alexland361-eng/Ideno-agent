@@ -96,5 +96,9 @@
     "recent_messages": 10,
     "$note": "How many recent conversation messages are sent as supporting context. The Idea State itself is always sent (it is canonical); the conversation is not."
   },
-  "$research": "Optional research provider (v0.3+). One of: {\"type\":\"tavily\",\"api_key_env\":\"TAVILY_API_KEY\"} | {\"type\":\"brave\",\"api_key_env\":\"BRAVE_API_KEY\"} | {\"type\":\"searxng\",\"base_url\":\"http://localhost:8888\"} (self-hosted, no key). Keys are env-var only. Without this section research fails explicitly (never faked)."
+  "$research": "Optional research provider (v0.3+). One of: {\"type\":\"tavily\",\"api_key_env\":\"TAVILY_API_KEY\"} | {\"type\":\"brave\",\"api_key_env\":\"BRAVE_API_KEY\"} | {\"type\":\"searxng\",\"base_url\":\"http://localhost:8888\"} (self-hosted, no key). Keys are env-var only. Without this section research fails explicitly (never faked).",
+  "$supabase": "Optional accounts + per-user settings. When present, users can sign in (email/password via Supabase Auth, mediated by this server) and store their AI provider keys server-side. Requires env vars SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY, the table from supabase/migrations/0001_user_settings.sql, and: \"supabase\": {\"url\": \"https://YOUR-PROJECT.supabase.co\"}",
+  "supabase_example": {
+    "url": "https://YOUR-PROJECT.supabase.co"
+  }
 }

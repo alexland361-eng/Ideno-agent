@@ -444,3 +444,37 @@ Verification honesty: the Pages site itself is NOT verified from here —
 the workflow runs on GitHub's runners. Enabled Pages via the API and
 dispatched a run on the session branch; watch the Actions tab for the
 green check.
+
+## 2026-10-08 — v0.4.0: Supabase accounts, server-mediated key storage
+
+The request ("store API keys and remember the user, using Supabase") sits
+directly on top of a standing security invariant: provider keys never reach
+the browser, and Supabase's default pattern (client SDK + anon key + RLS)
+puts the client one fetch away from the keys. Resolution, flagged to the
+user instead of silently picked: SERVER-MEDIATED Supabase.
+
+- Auth runs through the Ideno backend (/api/auth/*). No Supabase key of any
+  kind — not even the anon key — is in the browser. The client only holds
+  its own session tokens.
+- Keys live in ideno_user_settings, written/read by the backend with the
+  service role. The migration creates NO client policies and revokes client
+  privileges, so even a malicious page with the anon key reads nothing.
+- Keys are write-only from the UI: GET returns hints (nvapi-…1234); a blank
+  key on PUT keeps the stored one (the client cannot read keys back, so
+  "edit without re-entering" must mean "keep").
+- Consumption is server-side: chat with a valid Bearer token builds the
+  user's runtime from their stored providers (cached, invalidated on save).
+  An invalid token falls back to the server runtime — auth never loses the
+  user's turn. The server's privacy_mode governs user providers (LOCAL_ONLY
+  refuses cloud providers a user adds).
+- Zero new dependencies: Supabase's documented REST shapes via plain fetch.
+
+Test approach (same honesty pattern as NVIDIA NIM): a local mock implements
+the documented auth/v1 + rest/v1 contract; everything on OUR side of the
+wire is tested for real — including the security properties (service-key
+enforcement in the mock, redaction assertions, no-client-policies design).
+A live Supabase project is explicitly NOT verified.
+
+Found along the way: the demo provider ignored its configured model label,
+which weakened the per-user-runtime provenance test — fixed (constructor
+now honors config.model).

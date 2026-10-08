@@ -6,6 +6,9 @@ import type { ApiErrorShape } from '../../shared/errors.js';
 import type { RedactedConfig } from '../../shared/config.js';
 import type { ChatEvent } from '../../shared/chat.js';
 import type { AIRuntime } from '../ai/runtime.js';
+import type { SupabaseClient, UserSettings } from '../supabase/client.js';
+import { runtimeForUser, invalidateUserRuntime } from '../supabase/userRuntime.js';
+import { ProviderConfig } from '../../shared/config.js';
 import type { Orchestrator } from '../core/orchestration/orchestrator.js';
 import type { Clock } from '../util/clock.js';
 
@@ -25,6 +28,18 @@ export interface AppDependencies {
   startupNotes: string[];
   /** CORS: origins allowed to call the API (static UI hosting, e.g. Pages). */
   allowedOrigins?: string[];
+  /** Supabase (accounts + per-user settings). Absent = auth unavailable. */
+  supabase?: SupabaseClient | null;
+  /** Base config — source of the server privacy mode for user providers. */
+  baseConfig: import('../../shared/config.js').IdenoConfig;
+}
+
+function safeOrigin(url: string): string | undefined {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '<invalid url>';
+  }
 }
 
 export function createApp(deps: AppDependencies) {
@@ -56,8 +71,8 @@ export function createApp(deps: AppDependencies) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Max-Age', '86400');
     if (req.method === 'OPTIONS') {
       res.status(204).end();
@@ -153,8 +168,31 @@ export function createApp(deps: AppDependencies) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
       };
 
+      // Signed-in users with stored providers chat through THEIR runtime
+      // (keys consumed server-side; never sent to the browser).
+      let userRuntime: import('../ai/runtime.js').AIRuntime | undefined;
+      if (deps.supabase) {
+        const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '').trim();
+        if (token) {
+          try {
+            const user = await deps.supabase.verifyUserToken(token);
+            const settings = await deps.supabase.getUserSettings(user.id);
+            if (settings.providers.length > 0) {
+              userRuntime = runtimeForUser(user.id, settings, deps.baseConfig);
+            }
+          } catch (err) {
+            if (err instanceof AppError && err.code === 'AUTH_INVALID') {
+              // Invalid session: fall back to the server runtime rather
+              // than failing the turn; the UI refreshes sessions on 401s.
+            } else {
+              throw err;
+            }
+          }
+        }
+      }
+
       try {
-        const gen = deps.orchestrator.handleUserMessage(message, abort.signal, { deep });
+        const gen = deps.orchestrator.handleUserMessage(message, abort.signal, { deep, runtime: userRuntime });
         while (true) {
           const next = await gen.next();
           if (next.done) break;
@@ -238,6 +276,159 @@ export function createApp(deps: AppDependencies) {
     } catch (err) {
       next(err);
     }
+  });
+
+  /* ------------------------------------------------------------------
+     Accounts (Supabase, server-mediated: no Supabase secrets in browser)
+     ------------------------------------------------------------------ */
+
+  const requireUser = async (req: Request): Promise<{ id: string; email: string | null }> => {
+    if (!deps.supabase) {
+      throw new AppError('AUTH_UNAVAILABLE', 'This Ideno server has no Supabase configured (config: supabase.url + env keys).', {
+        detail: ['Set supabase in config/ideno.config.json and SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY in the environment.'],
+      });
+    }
+    const header = req.headers.authorization ?? '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token) throw new AppError('AUTH_REQUIRED', 'Sign in to use this endpoint.', { status: 401 });
+    return deps.supabase.verifyUserToken(token);
+  };
+
+  app.post('/api/auth/signup', async (req, res, next) => {
+    try {
+      if (!deps.supabase) throw new AppError('AUTH_UNAVAILABLE', 'This server has no Supabase configured.');
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      if (!email || !password) throw new AppError('BAD_REQUEST', "Fields 'email' and 'password' are required.");
+      const user = await deps.supabase.signUp(email, password);
+      res.json({ user });
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/auth/login', async (req, res, next) => {
+    try {
+      if (!deps.supabase) throw new AppError('AUTH_UNAVAILABLE', 'This server has no Supabase configured.');
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+      const password = typeof req.body?.password === 'string' ? req.body.password : '';
+      if (!email || !password) throw new AppError('BAD_REQUEST', "Fields 'email' and 'password' are required.");
+      const session = await deps.supabase.signInWithPassword(email, password);
+      res.json(session);
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/auth/refresh', async (req, res, next) => {
+    try {
+      if (!deps.supabase) throw new AppError('AUTH_UNAVAILABLE', 'This server has no Supabase configured.');
+      const refreshToken = typeof req.body?.refresh_token === 'string' ? req.body.refresh_token : '';
+      if (!refreshToken) throw new AppError('BAD_REQUEST', "Field 'refresh_token' is required.");
+      const session = await deps.supabase.refreshSession(refreshToken);
+      res.json(session);
+    } catch (err) { next(err); }
+  });
+
+  app.post('/api/auth/logout', async (req, res, next) => {
+    try {
+      const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+      if (deps.supabase && token) await deps.supabase.signOut(token);
+      res.json({ ok: true });
+    } catch (err) { next(err); }
+  });
+
+  app.get('/api/auth/user', async (req, res, next) => {
+    try {
+      const user = await requireUser(req);
+      res.json({ user });
+    } catch (err) { next(err); }
+  });
+
+  /* ------------------------------------------------------------------
+     Per-user settings (provider keys stored server-side, redacted views)
+     ------------------------------------------------------------------ */
+
+  /** NEVER return full keys to the browser — hints only. */
+  const redact = (settings: UserSettings) => ({
+    providers: settings.providers.map((p) => {
+      const key = typeof p.api_key === 'string' ? p.api_key : undefined;
+      return {
+        id: p.id,
+        type: p.type,
+        display_name: p.display_name ?? p.id,
+        model: p.model,
+        base_url_origin: typeof p.base_url === 'string' ? safeOrigin(p.base_url) : undefined,
+        structured_output: p.structured_output,
+        api_key_hint: key ? `${key.slice(0, 6)}…${key.slice(-4)}` : null,
+      };
+    }),
+    routing: settings.routing,
+  });
+
+  app.get('/api/user/settings', async (req, res, next) => {
+    try {
+      const user = await requireUser(req);
+      const settings = await deps.supabase!.getUserSettings(user.id);
+      res.json(redact(settings));
+    } catch (err) { next(err); }
+  });
+
+  app.put('/api/user/settings', async (req, res, next) => {
+    try {
+      const user = await requireUser(req);
+      const incoming = req.body?.providers;
+      if (!Array.isArray(incoming) || incoming.length > 10) {
+        throw new AppError('BAD_REQUEST', "Field 'providers' must be an array (max 10).");
+      }
+      const providers: UserSettings['providers'] = [];
+      const seen = new Set<string>();
+      for (const raw of incoming) {
+        if (!raw || typeof raw !== 'object') throw new AppError('BAD_REQUEST', 'Each provider must be an object.');
+        const { id, ...rest } = raw as Record<string, unknown>;
+        if (typeof id !== 'string' || !id.trim()) throw new AppError('BAD_REQUEST', 'Each provider needs a non-empty id.');
+        if (seen.has(id)) throw new AppError('BAD_REQUEST', `Duplicate provider id '${id}'.`);
+        seen.add(id);
+        // NOTE: an empty api_key means "keep the stored one" — the client
+        // cannot read keys back, so edits send blank unless re-entered.
+        if (rest.api_key === '') delete rest.api_key;
+        const parsed = ProviderConfig.safeParse(rest);
+        if (!parsed.success) {
+          throw new AppError('CONFIG_INVALID', `Provider '${id}' is invalid.`, {
+            detail: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+          });
+        }
+        let record = parsed.data as Record<string, unknown>;
+        if (rest.api_key === undefined) {
+          // keep existing key for this id if the client sent none
+          const existing = (await deps.supabase!.getUserSettings(user.id)).providers.find((p) => p.id === id);
+          if (existing?.api_key) record = { ...record, api_key: existing.api_key };
+        }
+        providers.push({ id, ...record });
+      }
+      const routing = (req.body?.routing && typeof req.body.routing === 'object' ? req.body.routing : undefined) as UserSettings['routing'];
+      const settings: UserSettings = { providers, ...(routing ? { routing } : {}) };
+      await deps.supabase!.upsertUserSettings(user.id, settings);
+      invalidateUserRuntime(user.id);
+      res.json(redact(settings));
+    } catch (err) { next(err); }
+  });
+
+  /** Health-check the USER'S stored providers (server-side, redacted result). */
+  app.post('/api/user/settings/test', async (req, res, next) => {
+    try {
+      const user = await requireUser(req);
+      const settings = await deps.supabase!.getUserSettings(user.id);
+      if (settings.providers.length === 0) {
+        throw new AppError('BAD_REQUEST', 'No providers saved yet.');
+      }
+      const runtime = runtimeForUser(user.id, settings, deps.baseConfig);
+      const health = await runtime.healthReport();
+      res.json({
+        providers: health.map((h) => ({
+          id: h.id,
+          display_name: h.display_name,
+          model: h.model,
+          health: h.health,
+        })),
+      });
+    } catch (err) { next(err); }
   });
 
   app.post('/api/case/reset', async (_req, res, next) => {

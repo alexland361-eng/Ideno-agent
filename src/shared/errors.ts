@@ -23,6 +23,8 @@ export const ERROR_CODES = [
   'PROPOSAL_NOT_FOUND',
   'STATE_CONFLICT', // proposal no longer applies to current state
   'RESEARCH_UNAVAILABLE', // no research provider configured
+  'AUTH_UNAVAILABLE', // no Supabase configured on this server
+  'AUTH_REQUIRED', // request needs a signed-in user
   // Local system
   'PERSISTENCE_ERROR',
   'BAD_REQUEST',
@@ -83,7 +85,10 @@ export function httpStatusFor(code: ErrorCode): number {
     case 'PROVIDER_UNAVAILABLE':
     case 'CAPABILITY_UNSUPPORTED':
     case 'RESEARCH_UNAVAILABLE':
+    case 'AUTH_UNAVAILABLE':
       return 502;
+    case 'AUTH_REQUIRED':
+      return 401;
     case 'CONFIG_INVALID':
       return 500;
     case 'VALIDATION_FAILED':

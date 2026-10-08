@@ -116,6 +116,7 @@ beforeAll(async () => {
   const app = createApp({
     orchestrator,
     runtime,
+    baseConfig: config,
     redactedConfig: redactConfig(config),
     startupNotes: [],
   });

@@ -3,6 +3,7 @@ import type { StoredProposal, Proposal } from '../shared/schemas/proposal.js';
 import type { VersionRecord, IdeaCase } from '../shared/schemas/ideaCase.js';
 import type { RedactedConfig } from '../shared/config.js';
 import { demoBackend } from './demoBackend.js';
+import { authHeader } from './auth.js';
 
 /**
  * Typed client for the Ideno API. The browser talks only to the Ideno
@@ -258,7 +259,7 @@ export async function streamChat(
   }
   const res = await fetch(apiUrl('/api/chat'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ message, deep: opts?.deep === true }),
     signal,
   });
@@ -302,3 +303,71 @@ export async function streamChat(
 
 // Re-export shared types used by components.
 export type { StoredProposal, Proposal };
+
+
+/* ---------------------------------------------------------------------------
+   Accounts + per-user settings (server mode only; Supabase is configured
+   server-side — the browser never talks to Supabase directly).
+   Provider keys are write-only from the browser: saves send them once,
+   reads return redacted hints (api_key_hint) — never the full key.
+   ------------------------------------------------------------------------- */
+
+export interface RedactedUserSettings {
+  providers: Array<{
+    id: string;
+    type: string;
+    display_name: string;
+    model: string;
+    base_url_origin?: string;
+    structured_output?: 'json_schema' | 'json_object' | 'none';
+    api_key_hint: string | null;
+  }>;
+  routing?: { conversation?: { provider?: string } };
+}
+
+export interface UserSettingsInput {
+  providers: Array<{
+    id: string;
+    type: 'openai_compatible';
+    display_name?: string;
+    base_url: string;
+    model: string;
+    api_key?: string;
+    structured_output?: 'json_schema' | 'json_object' | 'none';
+    streaming?: boolean;
+  }>;
+  routing?: { conversation?: { provider?: string } };
+}
+
+export async function getUserSettings(): Promise<RedactedUserSettings> {
+  if ((await getApiMode()) === 'demo') {
+    throw Object.assign(new Error('Accounts require a connected Ideno server.'), { code: 'AUTH_UNAVAILABLE' });
+  }
+  const res = await fetch(apiUrl('/api/user/settings'), { headers: authHeader() });
+  return json(res);
+}
+
+export async function saveUserSettings(settings: UserSettingsInput): Promise<RedactedUserSettings> {
+  if ((await getApiMode()) === 'demo') {
+    throw Object.assign(new Error('Accounts require a connected Ideno server.'), { code: 'AUTH_UNAVAILABLE' });
+  }
+  const res = await fetch(apiUrl('/api/user/settings'), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(settings),
+  });
+  return json(res);
+}
+
+export async function testUserProviders(): Promise<{
+  providers: Array<{ id: string; display_name: string; model: string; health: { ok: boolean; detail: string } }>;
+}> {
+  if ((await getApiMode()) === 'demo') {
+    throw Object.assign(new Error('Accounts require a connected Ideno server.'), { code: 'AUTH_UNAVAILABLE' });
+  }
+  const res = await fetch(apiUrl('/api/user/settings/test'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+  });
+  return json(res);
+}

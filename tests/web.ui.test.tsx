@@ -273,6 +273,32 @@ const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
   if (url === '/api/research/propose' && method === 'POST') {
     return jsonBody({ message: { id: 'msg-r1', role: 'assistant', content: 'research', created_at: 't' }, proposal: proposals[0] ?? null });
   }
+  if (url === '/api/auth/login' && method === 'POST') {
+    const body = JSON.parse(String(init?.body ?? '{}')) as { email?: string; password?: string };
+    if (body.email === 'dev@example.com' && body.password === 'correct-horse') {
+      return jsonBody({
+        access_token: 'tok_ui_1',
+        refresh_token: 'ref_ui_1',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: { id: 'u_1', email: 'dev@example.com' },
+      });
+    }
+    return { ok: false, status: 400, json: async () => ({ code: 'AUTH_INVALID', message: 'invalid credentials', recoverable: true }) };
+  }
+  if (url === '/api/user/settings' && method === 'GET') {
+    return jsonBody({
+      providers: [
+        {
+          id: 'my-nim',
+          type: 'openai_compatible',
+          display_name: 'NVIDIA NIM',
+          model: 'meta/llama-3.1-8b-instruct',
+          base_url_origin: 'https://integrate.api.nvidia.com',
+          api_key_hint: 'nvapi-…1234',
+        },
+      ],
+    });
+  }
   if (url === '/api/case/reset' && method === 'POST') {
     freshState();
     return jsonBody({ case: caseData, versions, proposals, messages, load_warnings: [] });
@@ -518,6 +544,27 @@ describe('Ideno UI', () => {
     expect(screen.getByRole('button', { name: /Propose recording in Idea State/i })).toBeDefined();
     expect(screen.getByText(/A research provider is configured/i)).toBeDefined();
     (CONFIG as { research_provider_configured: boolean }).research_provider_configured = false;
+  });
+
+  it('account: sign in, stored session, provider keys shown redacted only', async () => {
+    render(<App />);
+    await screen.findByText('No idea yet.');
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    // Sign-in form (no session yet).
+    expect(await screen.findByTestId('account-card')).toBeDefined();
+    const email = screen.getByRole('textbox', { name: 'Email' }) as HTMLInputElement;
+    const password = screen.getByLabelText('Password') as HTMLInputElement;
+    fireEvent.change(email, { target: { value: 'dev@example.com' } });
+    fireEvent.change(password, { target: { value: 'correct-horse' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    // Signed in; provider editor shows the REDACTED hint, never a full key.
+    expect(await screen.findByText(/Signed in as dev@example.com/i)).toBeDefined();
+    // The hint appears in the key input's placeholder (write-only field).
+    expect(await screen.findByPlaceholderText(/nvapi-…1234/)).toBeDefined();
+    expect(screen.queryByText(/SUPER-SECRET/i)).toBeNull();
+    // Session persisted for "remember the user".
+    const stored = localStorage.getItem('ideno.session');
+    expect(stored).toContain('tok_ui_1');
   });
 
   it('boots into the labeled offline demo when no server is reachable', async () => {

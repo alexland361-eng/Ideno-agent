@@ -60,6 +60,7 @@ beforeAll(async () => {
   const app = createApp({
     orchestrator,
     runtime,
+    baseConfig: config,
     redactedConfig: {
       privacy_mode: config.privacy_mode,
       providers: [],

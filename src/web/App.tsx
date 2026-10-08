@@ -13,6 +13,7 @@ import {
   resetCase,
   initApiMode,
   readApiBase,
+
   type CaseStateResponse,
   type HealthResponse,
   type ApiMode,
@@ -27,6 +28,7 @@ import { ResearchView } from './views/ResearchView';
 import { SettingsView } from './views/SettingsView';
 import { CommandPalette, type PaletteCommand, type PaletteResult } from './components/CommandPalette';
 import { Toasts, type Toast } from './components/Toasts';
+import { ensureSession } from './auth';
 import {
   nextAppearance,
   readStateWidth,
@@ -137,6 +139,9 @@ export function App() {
       .then((mode) => {
         if (!alive) return;
         setApiMode(mode);
+        // "Remember the user": silently refresh a stored session (if any)
+        // so authenticated calls (chat with your providers) keep working.
+        if (mode === 'server') void ensureSession('server').catch(() => null);
         refresh();
         fetchConfig().then(setConfig).catch(() => undefined);
         fetchHealth().then(setHealth).catch(() => undefined);

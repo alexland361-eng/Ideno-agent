@@ -165,11 +165,12 @@ function titleFromIdea(idea: string): string {
 export class DemoProvider implements AIProvider {
   readonly id: string;
   readonly displayName: string;
-  readonly model = 'scripted-demo-v0';
+  model = 'scripted-demo-v0';
   readonly capabilities: ProviderCapabilities;
 
-  constructor(id: string, _config: DemoProviderConfig) {
+  constructor(id: string, config: DemoProviderConfig) {
     this.id = id;
+    this.model = config.model ?? this.model;
     this.displayName = `DEMO — scripted (not AI): ${id}`;
     this.capabilities = {
       structured_output: 'json_schema',

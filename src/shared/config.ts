@@ -126,6 +126,23 @@ export const IdenoConfig = z.object({
     .prefault({}),
   /** Optional research provider (§17). Absent = research explicitly unavailable. */
   research: ResearchProviderConfig.optional(),
+  /**
+   * Optional Supabase integration: user accounts + per-user settings
+   * (including provider API keys). SECURITY MODEL: the browser NEVER talks
+   * to Supabase and never sees provider keys — the web client authenticates
+   * through the Ideno backend (/api/auth/*), which verifies tokens and
+   * reads/writes the settings table with the service role. Provider keys
+   * are consumed server-side when building the user's AI runtime.
+   */
+  supabase: z
+    .object({
+      url: z.string().url(),
+      /** Public anon key (used for auth endpoints) — env only. */
+      anon_key_env: z.string().default('SUPABASE_ANON_KEY'),
+      /** Service role key (settings table access) — env only, NEVER exposed. */
+      service_key_env: z.string().default('SUPABASE_SERVICE_ROLE_KEY'),
+    })
+    .optional(),
 });
 export type IdenoConfig = z.infer<typeof IdenoConfig>;
 

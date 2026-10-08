@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-10-08 — v0.4.0
+
+### Added
+
+- **Accounts + per-user provider keys via Supabase** (optional, config:
+  `supabase.url` + env-only `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY`).
+  - "Remember the user": email/password sign-up/sign-in through the Ideno
+    backend (`/api/auth/*` — the browser never talks to Supabase, so no
+    Supabase keys of any kind reach the client). Sessions persist across
+    reloads and refresh silently.
+  - **API keys stored server-side**: Settings → Account → provider keys are
+    saved via the backend into `ideno_user_settings` (service-role only; the
+    table has no client policies — see `supabase/migrations`). Reads return
+    redacted hints (`nvapi-…1234`) — keys are write-only from the browser.
+    A blank key on re-save keeps the stored one.
+  - **Per-user AI runtime**: chat from a signed-in browser runs on the
+    user's stored providers (runtime built server-side, cached, invalidated
+    on settings change; the server's privacy mode still governs). Invalid
+    sessions fall back to the server runtime — a turn is never lost to auth.
+  - `POST /api/user/settings/test` health-checks the user's providers
+    server-side; `AUTH_REQUIRED`/`AUTH_UNAVAILABLE` classified errors.
+- Demo provider now honors the configured `model` label (was fixed).
+
+### Verification status
+
+- Verified: 140/140 tests. The Supabase contract (auth/v1 + rest/v1) is
+  exercised against a local mock implementing the documented REST API —
+  signup/login/refresh/logout, token verification, settings round trip,
+  service-role-only table access, redaction (full key never in any
+  response), blank-key-keeps-stored, per-user runtime injection in chat
+  (proposal provenance shows the user's provider), invalid-token fallback.
+  UI: sign-in flow, session persistence, redacted hint display.
+- NOT verified: a live Supabase project (sandbox network policy blocks
+  *.supabase.co). The endpoint shapes follow Supabase's documented REST
+  API; run the migration and try it against a real project.
+
 ## 2026-10-08 — v0.3.1
 
 ### Added

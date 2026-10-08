@@ -97,6 +97,24 @@ npm run provider:check nvidia-nim      # provider id from your config
   Every edge is a real relation from the state. Orbit, zoom, click to
   inspect any node.
 
+## Accounts (Supabase, optional)
+
+Configure Supabase on your server and users can **sign in and be remembered** —
+their settings follow them to any browser:
+
+```json
+"supabase": { "url": "https://YOUR-PROJECT.supabase.co" }
+```
+
+- `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are **env vars only**.
+- Run `supabase/migrations/0001_user_settings.sql` once in the Supabase SQL editor.
+- **Provider API keys are stored server-side** in Supabase and are consumed
+  server-side when building that user's AI runtime. The browser only ever
+  sees redacted hints (`nvapi-…9f2c`) — keys are write-only from the UI, and
+  the settings table is invisible to browser clients (no client policies).
+- Chats from a signed-in browser use *your* providers; the server's privacy
+  mode still governs what is allowed.
+
 ## The interface
 
 The web client is a **Liquid Glass** design modeled on Apple's iOS materials:
@@ -194,7 +212,7 @@ automatically and no configuration is needed.
 
 ```bash
 npm run dev        # server (tsx watch) on :8787 + vite dev server on :5173 proxying /api
-npm test           # full test suite (131 tests: server, e2e, research, deep, 3D math, browser UI)
+npm test           # full test suite (140 tests: server, e2e, research, deep, 3D, accounts, browser UI)
 npm run typecheck  # strict TypeScript across server + web
 npm run build      # typecheck + web build + server bundle
 ```

@@ -6,6 +6,7 @@ import { Orchestrator } from './core/orchestration/orchestrator.js';
 import { createApp } from './api/routes.js';
 import { systemClock } from './util/clock.js';
 import { buildResearchProvider } from './research/httpProvider.js';
+import { buildSupabaseClient } from './supabase/client.js';
 
 /**
  * Ideno server entry point.
@@ -28,6 +29,10 @@ function serverVersion(): string {
 async function main() {
   const { config, notes } = await loadConfig();
   const runtime = buildRuntime(config);
+  // Accounts + per-user settings. Missing env keys are a hard config error
+  // when the supabase section is present — the server must not silently
+  // pretend accounts exist. Null when the section is absent.
+  const supabase = buildSupabaseClient(config.supabase);
 
   const dataDir = path.resolve(config.data_dir);
   const store = new Store(dataDir, systemClock);
@@ -46,6 +51,8 @@ async function main() {
     webDistDir,
     startupNotes: notes,
     allowedOrigins: config.server.allowed_origins,
+    supabase,
+    baseConfig: config,
   });
 
   const server = app.listen(config.server.port, config.server.host, () => {
