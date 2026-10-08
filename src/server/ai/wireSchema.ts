@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OrchestratorEnvelope } from '../../shared/schemas/proposal.js';
+import { OrchestratorEnvelope, CritiqueResult } from '../../shared/schemas/proposal.js';
 
 /**
  * Wire schema construction for structured outputs.
@@ -15,6 +15,14 @@ import { OrchestratorEnvelope } from '../../shared/schemas/proposal.js';
  * `normalizeNulls` strips them before Zod validation, where `.optional()` and
  * `.default()` take over.
  */
+
+export function buildCritiqueWireSchema(): Record<string, unknown> {
+  const derived = z.toJSONSchema(CritiqueResult, {
+    target: 'draft-2020-12',
+    io: 'output',
+  });
+  return makeStrict(deepClone(derived)) as Record<string, unknown>;
+}
 
 export function buildEnvelopeWireSchema(): Record<string, unknown> {
   const derived = z.toJSONSchema(OrchestratorEnvelope, {

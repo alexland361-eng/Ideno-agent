@@ -25,7 +25,7 @@ export type ChatMessage = z.infer<typeof ChatMessage>;
 // ---------------------------------------------------------------------------
 
 export type ChatEvent =
-  | { type: 'status'; phase: 'routing' | 'generating' | 'validating'; detail?: string }
+  | { type: 'status'; phase: 'routing' | 'generating' | 'critiquing' | 'validating'; detail?: string }
   | { type: 'token'; text: string }
   | { type: 'reply'; text: string }
   | { type: 'proposal'; proposal: StoredProposal }

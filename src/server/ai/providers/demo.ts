@@ -213,7 +213,31 @@ export class DemoProvider implements AIProvider {
 
   // -------------------------------------------------------------------------
 
+  /** Deterministic critique for the deep-analysis pass (demo). */
+  private demoCritique(req: GenerateRequest): unknown {
+    const userMessage = [...req.messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+    return {
+      issues: [
+        {
+          severity: 'low',
+          area: 'review completeness',
+          description:
+            'Scripted demo critique: a real model would adversarially check this change against the current state (conflicts, unsupported assumptions, missing considerations).',
+        },
+      ],
+      missing_considerations: [
+        'Scripted demo critique: a real model would list considerations the draft may have missed.',
+      ],
+      questions: [`Demo: what should be double-checked before accepting changes related to "${userMessage.slice(0, 60)}"?`],
+      summary: 'Scripted demo critique (deterministic template, not AI reasoning).',
+    };
+  }
+
   private buildEnvelope(req: GenerateRequest): OrchestratorEnvelope {
+    // Deep-analysis pass: a deterministic, clearly-labeled critique.
+    if (req.jsonSchema?.name === 'ideno_critique') {
+      return this.demoCritique(req) as unknown as OrchestratorEnvelope;
+    }
     const state = parseStateContext(req.system);
     const userMessage = [...req.messages].reverse().find((m) => m.role === 'user')?.content ?? '';
 

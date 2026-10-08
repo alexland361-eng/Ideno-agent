@@ -158,11 +158,38 @@ export function redactConfig(config: ConfigType): RedactedConfig {
       },
     };
   });
+  const research = config.research
+    ? {
+        id: `research-${config.research.type}`,
+        type: config.research.type,
+        display_name:
+          config.research.type === 'searxng'
+            ? `SearXNG (${new URL(config.research.base_url).host})`
+            : config.research.type === 'tavily'
+              ? 'Tavily'
+              : 'Brave Search',
+        base_url_origin: (() => {
+          try {
+            const url =
+              config.research?.type === 'tavily'
+                ? (config.research.base_url ?? 'https://api.tavily.com')
+                : config.research?.type === 'brave'
+                  ? (config.research.base_url ?? 'https://api.search.brave.com')
+                  : config.research.base_url;
+            return new URL(url).origin;
+          } catch {
+            return '<invalid url>';
+          }
+        })(),
+        local: config.research.type === 'searxng',
+      }
+    : undefined;
   return {
     privacy_mode: config.privacy_mode,
     providers,
     routing: config.routing,
-    research_provider_configured: false,
+    research_provider_configured: research !== undefined,
+    ...(research ? { research } : {}),
   };
 }
 

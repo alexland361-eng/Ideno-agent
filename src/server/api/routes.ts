@@ -103,6 +103,7 @@ export function createApp(deps: AppDependencies) {
       if (!message.trim()) {
         throw new AppError('BAD_REQUEST', "Field 'message' (non-empty string) is required.");
       }
+      const deep = req.body?.deep === true;
 
       chatInFlight = true;
       const abort = new AbortController();
@@ -128,7 +129,7 @@ export function createApp(deps: AppDependencies) {
       };
 
       try {
-        const gen = deps.orchestrator.handleUserMessage(message, abort.signal);
+        const gen = deps.orchestrator.handleUserMessage(message, abort.signal, { deep });
         while (true) {
           const next = await gen.next();
           if (next.done) break;
@@ -194,6 +195,21 @@ export function createApp(deps: AppDependencies) {
         max_results: 5,
       });
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Run research and propose recording the findings as a pending proposal
+  // (§17/§27): sources come from the research provider, acceptance is human.
+  app.post('/api/research/propose', async (req, res, next) => {
+    try {
+      const question = typeof req.body?.question === 'string' ? req.body.question.trim() : '';
+      if (!question) {
+        throw new AppError('BAD_REQUEST', "Field 'question' (non-empty string) is required.");
+      }
+      const out = await deps.orchestrator.proposeResearchFindings(question);
+      res.json(out);
     } catch (err) {
       next(err);
     }

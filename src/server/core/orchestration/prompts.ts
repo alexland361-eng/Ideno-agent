@@ -154,3 +154,44 @@ export function serializeState(caseData: IdeaCase): string {
 function itemLine(id: string, knowledgeClass: string, status: string, text: string): string {
   return `  [${id}|${knowledgeClass}|${status}] ${text.replace(/\n+/g, ' ')}`;
 }
+
+/**
+ * Deep-analysis critique pass (§15 Agent Responsibilities, extended).
+ *
+ * A SECOND model pass adversarially reviews the drafted proposal against the
+ * current Idea State: what is wrong, what is missing, what should the human
+ * double-check before accepting. The critique NEVER mutates the proposal —
+ * it is surfaced as warnings, questions, and findings on the review card so
+ * the human makes the accept/reject decision with the criticism in hand.
+ */
+export function buildCritiqueMessages(
+  caseData: IdeaCase,
+  draftedProposal: unknown,
+  userMessage: string,
+): { system: string; messages: ChatCompletionMessage[] } {
+  const system = [
+    'You are the adversarial reviewer in an idea-development system.',
+    'Another model just drafted a proposed change to the structured idea state.',
+    'Your job is to find what is WRONG or MISSING before the human reviews it.',
+    '',
+    'CURRENT IDEA STATE:',
+    serializeState(caseData),
+    '',
+    'Be specific and skeptical. Flag contradictions with existing state,',
+    'unsupported assumptions, missing considerations, and questions the human',
+    'should answer before accepting. Do not soften findings. If the proposal',
+    'is sound, say so briefly — do not invent problems.',
+  ].join('\n');
+  const messages: ChatCompletionMessage[] = [
+    {
+      role: 'user',
+      content: [
+        `USER MESSAGE: ${userMessage}`,
+        '',
+        'DRAFTED PROPOSAL (JSON):',
+        JSON.stringify(draftedProposal, null, 2),
+      ].join('\n'),
+    },
+  ];
+  return { system, messages };
+}

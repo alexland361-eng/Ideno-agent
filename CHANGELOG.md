@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-10-08 — v0.3.0
+
+### Added
+
+- **Research capability (§17, implemented)**: config-driven research
+  providers — Tavily, Brave Search API, or a self-hosted SearXNG instance
+  (no key, stays on your network). Secrets are env-var only and never reach
+  the browser (the redacted config exposes only the origin and type). The
+  Research view searches for real, sourced results (title, URL, date,
+  excerpt) and can propose recording a research question in the Idea State —
+  through the same human-review channel as model proposals (§27); sources
+  are listed in the conversation for verification before acceptance.
+  Without a configured provider the view still states honestly that
+  research is unavailable.
+- **Deep analysis (agent capability)**: a "Deep" toggle in the composer runs
+  a second adversarial model pass over the drafted proposal before you see
+  it. Findings (issues with severity, missing considerations, questions)
+  appear on the review card in a dedicated section; they are advisory and
+  never mutate the proposal. A failed critique pass degrades to a warning
+  instead of losing the turn. Streaming gains a `critiquing` phase.
+- **Idea Constellation (3D view)**: the Idea State as a spatial structure —
+  goals at the center, decisions/constraints/unknowns/evidence on shells,
+  with edges drawn ONLY from real relations (decisions → affected items,
+  evidence → supported/contradicted claims, alternatives → related). Orbit
+  by dragging, zoom with the wheel, full keyboard control (arrows, +/-),
+  click a node to open its inspector sheet. Canvas 2D with hand-rolled 3D
+  projection — zero new dependencies, deterministic layout (same state →
+  same constellation), DPR-aware, pauses when hidden, respects
+  prefers-reduced-motion, and degrades gracefully when 2D context is
+  unavailable.
+
+### Verification status
+
+- Verified: 123/123 tests. Research providers tested against a REAL local
+  HTTP round trip (a node http.Server standing in for the external service
+  — request/response handling, source mapping, error classification,
+  missing-key failure); the research→proposal→accept→version flow runs the
+  full orchestrator + persistence stack. Deep analysis tested end-to-end
+  over SSE (phase event, critique merge, warnings). Constellation math
+  unit-tested (relation-only edges, determinism, settling, projection,
+  picking) plus UI smoke tests. Typecheck clean, production build clean.
+- NOT verified: live Tavily/Brave/SearXNG endpoints (sandbox network policy
+  blocks them) and real-model critique quality (the demo provider's
+  critique is a clearly-labeled deterministic template). The 3D view's
+  visual quality needs a real browser — the math and lifecycle are tested,
+  the aesthetics are not.
+
 ## 2026-10-08 — v0.2.0
 
 ### Added

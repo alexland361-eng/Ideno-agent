@@ -95,5 +95,6 @@
   "context": {
     "recent_messages": 10,
     "$note": "How many recent conversation messages are sent as supporting context. The Idea State itself is always sent (it is canonical); the conversation is not."
-  }
+  },
+  "$research": "Optional research provider (v0.3+). One of: {\"type\":\"tavily\",\"api_key_env\":\"TAVILY_API_KEY\"} | {\"type\":\"brave\",\"api_key_env\":\"BRAVE_API_KEY\"} | {\"type\":\"searxng\",\"base_url\":\"http://localhost:8888\"} (self-hosted, no key). Keys are env-var only. Without this section research fails explicitly (never faked)."
 }

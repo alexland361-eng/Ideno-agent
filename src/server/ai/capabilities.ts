@@ -17,6 +17,7 @@ interface TaskRequirements {
 
 const TASK_REQUIREMENTS: Record<AITask, TaskRequirements> = {
   conversation: { structuredOutput: true, streaming: false },
+  critique: { structuredOutput: true, streaming: false },
 };
 
 /** Returns an explanation string for each unmet requirement. */

@@ -89,11 +89,37 @@ export async function resetCase(): Promise<CaseStateResponse> {
 }
 
 /** Research search — throws a classified error when no provider is configured. */
-export async function researchSearch(question: string, keywords?: string[]): Promise<unknown> {
+export interface ResearchSource {
+  title: string;
+  url: string;
+  source_type: string;
+  author?: string;
+  publication_date?: string;
+  excerpt?: string;
+}
+export interface ResearchResponse {
+  query: { question: string };
+  sources: ResearchSource[];
+  retrieved_at: string;
+}
+
+export async function researchSearch(question: string, keywords?: string[]): Promise<ResearchResponse> {
   const res = await fetch('/api/research', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, keywords }),
+  });
+  return json(res);
+}
+
+/** Run research server-side and create a pending proposal recording it. */
+export async function proposeResearch(
+  question: string,
+): Promise<{ message: ChatMessage; proposal: StoredProposal }> {
+  const res = await fetch('/api/research/propose', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question }),
   });
   return json(res);
 }
@@ -107,11 +133,12 @@ export async function streamChat(
   message: string,
   onEvent: (event: ChatEvent) => void,
   signal?: AbortSignal,
+  opts?: { deep?: boolean },
 ): Promise<void> {
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, deep: opts?.deep === true }),
     signal,
   });
   if (!res.ok || !res.body) {

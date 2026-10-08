@@ -81,6 +81,22 @@ npm run provider:check nvidia-nim      # provider id from your config
    and invalidates assumptions that no longer hold. Decisions are recorded with their
    maker (you vs. the model) and basis. You can inspect any version's diff at any time.
 
+## Capabilities
+
+- **Deep analysis** — toggle "Deep" in the composer and Ideno runs a second,
+  adversarial model pass over its own draft before showing it to you: issues,
+  missing considerations, and questions to double-check, right on the review
+  card. Advisory only — you still decide.
+- **Research** — configure a research provider (Tavily, Brave, or a
+  self-hosted SearXNG) and the Research view returns real, sourced results
+  you can propose recording in the Idea State. Sources never come from the
+  model (§17), and nothing enters the state without your acceptance (§27).
+  Unconfigured, research says so instead of faking it.
+- **Idea Constellation** — a 3D map of the whole Idea State: goals at the
+  center, evidence orbiting the claims it supports (or contradicts, in red).
+  Every edge is a real relation from the state. Orbit, zoom, click to
+  inspect any node.
+
 ## The interface
 
 The web client is a **Liquid Glass** design modeled on Apple's iOS materials:
@@ -158,7 +174,7 @@ Key invariants:
 
 ```bash
 npm run dev        # server (tsx watch) on :8787 + vite dev server on :5173 proxying /api
-npm test           # full test suite (105 tests: server, e2e, and browser UI)
+npm test           # full test suite (123 tests: server, e2e, research, deep, 3D math, browser UI)
 npm run typecheck  # strict TypeScript across server + web
 npm run build      # typecheck + web build + server bundle
 ```

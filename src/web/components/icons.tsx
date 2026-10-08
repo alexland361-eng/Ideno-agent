@@ -35,9 +35,16 @@ export type IconName =
   | 'inspect'
   | 'minus'
   | 'trash'
-  | 'compass';
+  | 'compass'
+  | 'orbit';
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  orbit: (
+    <>
+      <circle cx="12" cy="12" r="3.2" />
+      <ellipse cx="12" cy="12" rx="9.5" ry="4.2" transform="rotate(-24 12 12)" />
+    </>
+  ),
   logo: (
     <>
       <path d="M12 4.5 20 9l-8 4.5L4 9l8-4.5z" />

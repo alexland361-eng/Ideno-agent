@@ -23,6 +23,9 @@ export interface TurnErrorShape {
 }
 
 export interface ConversationProps {
+  /** Deep analysis: adversarial critique pass over the drafted proposal. */
+  deep: boolean;
+  onDeepChange: (deep: boolean) => void;
   caseData: IdeaCase | null;
   messages: ChatMessage[];
   proposals: Map<string, StoredProposal>;
@@ -45,6 +48,7 @@ const PHASE_LABELS: Record<string, string> = {
   routing: 'Analyzing your message…',
   generating: 'Developing the idea…',
   validating: 'Re-evaluating affected state…',
+  critiquing: 'Critiquing the draft (deep analysis)…',
 };
 
 export function Conversation(props: ConversationProps) {
@@ -172,6 +176,16 @@ export function Conversation(props: ConversationProps) {
             }}
           />
           <div className="composer-actions">
+            <button
+              className={cn('deep-toggle', props.deep && 'on')}
+              onClick={() => props.onDeepChange(!props.deep)}
+              disabled={busy}
+              aria-pressed={props.deep}
+              title="Deep analysis: after drafting, a second adversarial pass critiques the proposal before you review it"
+            >
+              <Icon name="inspect" size={13} />
+              Deep
+            </button>
             {busy ? (
               <IconButton label="Stop generating" icon="stop" className="send-btn stop" onClick={props.onStop} />
             ) : (

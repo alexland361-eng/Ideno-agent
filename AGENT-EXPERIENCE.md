@@ -354,3 +354,62 @@ Verification honesty: the refraction is verified structurally (rules in
 served CSS, filter in served HTML, detection in the JS bundle, class gating
 correct) — the actual visual bend cannot be verified without a Chromium
 screenshot, which this sandbox lacks.
+
+## 2026-10-08 — v0.3.0: research, deep analysis, 3D constellation
+
+### Scope honesty
+
+"Expand the agent's capabilities to its ultimate" is unbounded; translated
+into the two biggest REAL gaps in the system (research was
+interface-only/RESEARCH_UNAVAILABLE since v0.1; reasoning was single-pass)
+plus the user's 3D request. One correction had to be stated plainly first:
+there were NO 3D visualizations to "improve" — the constellation is new.
+
+### Decisions
+
+1. **Research providers are config-driven, like AI providers** (no vendor in
+   the core): tavily | brave | searxng discriminated union, api_key_env only,
+   base_url overridable. Verified against a local node http.Server — the
+   HTTP round trip is real, the external services are not reachable from
+   this sandbox (same honesty pattern as the v0.1.1 NVIDIA NIM entry).
+2. **Research → state flows through the proposal channel** (§27). The
+   research proposal adds research ITEMS; sources are listed in the reply
+   for human verification. Deliberately NOT done: letting research results
+   enter as external EVIDENCE records — the EvidenceAdd schema's
+   source_type enum ('user' | 'model_knowledge') is the §17 invariant that
+   keeps the model from fabricating sources, and widening it for the
+   research path needs a provenance-gated design (future work, noted).
+3. **Critique is a second structured pass, advisory only.** The critique
+   never mutates the proposal; findings merge into warnings +
+   StoredProposal.critique. A failed critique degrades to a warning — the
+   user's turn is never lost to the enhancement. Routing: 'critique' is a
+   new AI task that falls back to the conversation provider when unlisted
+   (routing already falls through to all providers for unknown tasks).
+4. **3D without a 3D library.** Canvas 2D + ~150 lines of projection math:
+   zero new dependencies, no WebGL context to lose, crisp at any DPR, and
+   the math (graph derivation, simulation, projection, picking) is pure and
+   unit-tested. Deterministic layout (FNV-1a hash of item ids → golden-angle
+   shell placement + force relaxation) so the same state always produces the
+   same constellation. Edges come ONLY from real relations — dangling
+   targets are dropped, tested explicitly.
+
+### Traps hit (again)
+
+- loadConfig reads env var IDENO_CONFIG, not IDENO_CONFIG_PATH — writing the
+  wrong name made two test suites silently run against the REPO's live
+  data/, polluting the demo case (caught by inspecting /api/case, fixed by
+  resetting + re-seeding). Lesson repeated for the nth time: when a test
+  unexpectedly passes, verify it is exercising what you think (the deep
+  suite "passed" against the wrong config — the research suite failed
+  loudly and exposed it).
+- vitest 5 requires awaiting expect().rejects; and jest-dom matchers
+  (toHaveAttribute) are NOT installed — plain getAttribute assertions.
+
+### Not verified (do not overstate)
+
+- Live Tavily/Brave/SearXNG endpoints (network policy) — provider shapes
+  follow their documented APIs; verify with a real key before relying on it.
+- Real-model critique quality — the demo critique is a labeled template;
+  the PIPELINE is what's tested.
+- Constellation aesthetics — math and lifecycle tested; visual quality
+  needs human eyes on a real browser.

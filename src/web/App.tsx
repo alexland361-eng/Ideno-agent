@@ -19,6 +19,7 @@ import { Button, Dot, IconButton, Kbd, Pill, Sheet, cn, useClickOutside } from '
 import { Conversation, type TurnErrorShape } from './components/Conversation';
 import { StatePanel, type DetailTarget } from './components/StatePanel';
 import { HistoryView } from './views/HistoryView';
+import { ConstellationView } from './views/ConstellationView';
 import { ResearchView } from './views/ResearchView';
 import { SettingsView } from './views/SettingsView';
 import { CommandPalette, type PaletteCommand, type PaletteResult } from './components/CommandPalette';
@@ -41,10 +42,11 @@ import {
  * screens (§33) and becomes an overlay sheet on narrow ones (§32).
  */
 
-type View = 'workspace' | 'research' | 'history' | 'settings';
+type View = 'workspace' | 'constellation' | 'research' | 'history' | 'settings';
 
 const VIEW_META: Record<View, { label: string; icon: IconName }> = {
   workspace: { label: 'Workspace', icon: 'workspace' },
+  constellation: { label: 'Map', icon: 'orbit' },
   research: { label: 'Research', icon: 'research' },
   history: { label: 'History', icon: 'history' },
   settings: { label: 'Settings', icon: 'settings' },
@@ -81,6 +83,7 @@ export function App() {
 
   /* ---- chat stream ---- */
   const [busy, setBusy] = useState(false);
+  const [deep, setDeep] = useState(false);
   const [phase, setPhase] = useState<string | null>(null);
   const [streamText, setStreamText] = useState('');
   const [streamProposal, setStreamProposal] = useState<StoredProposal | null>(null);
@@ -193,6 +196,7 @@ export function App() {
             }
           },
           abort.signal,
+          { deep },
         );
       } catch (err) {
         if (!(err instanceof DOMException && err.name === 'AbortError')) {
@@ -205,7 +209,7 @@ export function App() {
         refresh();
       }
     },
-    [busy, refresh],
+    [busy, deep, refresh],
   );
 
   const stop = useCallback(() => {
@@ -439,6 +443,7 @@ export function App() {
   const navItems: Array<{ key: View | 'state'; label: string; icon: IconName }> = narrow
     ? [
         { key: 'workspace', ...VIEW_META.workspace },
+        { key: 'constellation', ...VIEW_META.constellation },
         { key: 'state', label: 'Idea State', icon: 'state' },
         { key: 'research', ...VIEW_META.research },
         { key: 'history', ...VIEW_META.history },
@@ -567,9 +572,29 @@ export function App() {
               onAccept={onAccept}
               onReject={onReject}
               onStop={stop}
+              deep={deep}
+              onDeepChange={setDeep}
             />
           )}
-          {view === 'research' && caseData && <ResearchView caseData={caseData} />}
+          {view === 'constellation' && caseData && (
+            <ConstellationView
+              caseData={caseData}
+              onOpenItem={(collection, id) => {
+                setDetail({ collection, id });
+                revealState();
+              }}
+            />
+          )}
+          {view === 'research' && caseData && (
+            <ResearchView
+              caseData={caseData}
+              researchConfigured={config?.research_provider_configured === true}
+              onProposed={() => {
+                void refresh();
+                setView('workspace');
+              }}
+            />
+          )}
           {view === 'history' && <HistoryView versions={versions} />}
           {view === 'settings' && (
             <SettingsView

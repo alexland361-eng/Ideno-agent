@@ -8,9 +8,9 @@ import { AppError } from '../../shared/errors.js';
  * research provider can create `external` evidence records, and every external
  * claim must carry a traceable source.
  *
- * v0.1 ships the interface only. No research provider is implemented — calls
- * fail explicitly rather than pretending to work. A web-search or
- * document-fetch provider can be added later without touching the core.
+ * Since v0.3 the HTTP provider (httpProvider.ts) implements Tavily, Brave,
+ * and self-hosted SearXNG. When none is configured this NoResearchProvider
+ * fails explicitly rather than pretending to work.
  */
 
 export interface ResearchQuery {
@@ -57,7 +57,7 @@ export class NoResearchProvider implements ResearchProvider {
       {
         detail: [
           'Research is intentionally not faked: model statements are never presented as external evidence.',
-          'Configure a research provider (future feature) to enable sourced evidence.',
+          'Configure a research provider in config/ideno.config.json (tavily, brave, or searxng) to enable sourced evidence.',
         ],
         recoverable: false,
       },

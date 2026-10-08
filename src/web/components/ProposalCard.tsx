@@ -53,6 +53,7 @@ export function ProposalCard({
 }) {
   const [inspect, setInspect] = useState(false);
   const p = proposal.proposal;
+  const critique = proposal.critique;
   const changes = p.changes as unknown as Record<
     string,
     { added: Array<Record<string, unknown>>; modified: Array<Record<string, unknown>> }
@@ -210,6 +211,39 @@ export function ProposalCard({
         </div>
       )}
 
+      {critique && (
+        <div className="proposal-critique glass mat-2" data-testid="deep-analysis">
+          <div className="proposal-critique-head">
+            <Icon name="inspect" size={13} />
+            <span>Deep analysis — adversarial critique of this draft</span>
+          </div>
+          {critique.issues.length > 0 && (
+            <ul className="critique-issues">
+              {critique.issues.map((issue, i) => (
+                <li key={i} className={cn('critique-issue', `sev-${issue.severity}`)}>
+                  <span className="chip">{issue.severity}</span>
+                  <span className="critique-area">{issue.area}</span>
+                  <span>{issue.description}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {critique.missing_considerations.length > 0 && (
+            <div className="critique-missing">
+              <span className="muted">Possibly missing:</span>
+              <ul>
+                {critique.missing_considerations.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {critique.summary && <p className="muted critique-summary">{critique.summary}</p>}
+          <p className="muted critique-note">
+            The critique is advisory: it reviews the draft but never changes it. Accept or reject as you see fit.
+          </p>
+        </div>
+      )}
       {proposal.warnings.length > 0 && (
         <div className="proposal-warnings">
           {proposal.warnings.map((w, i) => (

@@ -1,10 +1,11 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { loadConfig, buildRuntime, redactConfig } from './config/load.js';
 import { Store } from './persistence/store.js';
 import { Orchestrator } from './core/orchestration/orchestrator.js';
 import { createApp } from './api/routes.js';
 import { systemClock } from './util/clock.js';
-import { NoResearchProvider } from './research/interface.js';
+import { buildResearchProvider } from './research/httpProvider.js';
 
 /**
  * Ideno server entry point.
@@ -15,16 +16,25 @@ import { NoResearchProvider } from './research/interface.js';
  * system reports research as unavailable rather than faking it.
  */
 
+/** Version from package.json (cwd when started via npm start / node dist). */
+function serverVersion(): string {
+  try {
+    return JSON.parse(readFileSync('package.json', 'utf8')).version as string;
+  } catch {
+    return 'unknown';
+  }
+}
+
 async function main() {
   const { config, notes } = await loadConfig();
   const runtime = buildRuntime(config);
 
   const dataDir = path.resolve(config.data_dir);
   const store = new Store(dataDir, systemClock);
-  // Research is a separate concern from LLM inference (§17). v0.1 ships no
-  // research provider: the system reports research as unavailable rather
-  // than faking it (NoResearchProvider throws a classified error).
-  const research = new NoResearchProvider();
+  // Research is a separate concern from LLM inference (§17). When configured,
+  // a real HTTP research provider serves sourced results; otherwise the
+  // NoResearchProvider fails explicitly rather than faking research.
+  const research = buildResearchProvider(config.research);
   const orchestrator = new Orchestrator(store, runtime, systemClock, config, research);
   const loadWarnings = await orchestrator.init();
 
@@ -38,7 +48,7 @@ async function main() {
   });
 
   const server = app.listen(config.server.port, config.server.host, () => {
-    console.log(`Ideno v0.1 listening on http://${config.server.host}:${config.server.port}`);
+    console.log(`Ideno v${serverVersion()} listening on http://${config.server.host}:${config.server.port}`);
     console.log(`Data directory: ${dataDir}`);
     console.log(`Privacy mode: ${config.privacy_mode}`);
     for (const note of notes) console.log(`Note: ${note}`);

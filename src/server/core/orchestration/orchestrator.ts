@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import type { IdeaCase, VersionRecord } from '../../../shared/schemas/ideaCase.js';
 import type { StoredProposal, OrchestratorEnvelope } from '../../../shared/schemas/proposal.js';
 import { OrchestratorEnvelope as EnvelopeSchema } from '../../../shared/schemas/proposal.js';
@@ -9,12 +10,14 @@ import type { AIRuntime } from '../../ai/runtime.js';
 import type { Clock } from '../../util/clock.js';
 import { iso } from '../../util/clock.js';
 import { prefixedId } from '../../util/ids.js';
-import { buildEnvelopeWireSchema } from '../../ai/wireSchema.js';
+import { buildEnvelopeWireSchema, buildCritiqueWireSchema } from '../../ai/wireSchema.js';
 import { validateProposal } from '../state/semanticValidation.js';
 import { applyProposal } from '../state/stateManager.js';
-import { buildSystemPrompt, buildContextMessages } from './prompts.js';
+import { buildSystemPrompt, buildContextMessages, buildCritiqueMessages } from './prompts.js';
+import { CritiqueResult as CritiqueSchema } from '../../../shared/schemas/proposal.js';
+type CritiqueType = z.infer<typeof CritiqueSchema>;
 import { extractPartialStringField } from './partialJson.js';
-import type { ResearchProvider, ResearchQuery } from '../../research/interface.js';
+import type { ResearchProvider, ResearchQuery, ResearchResult } from '../../research/interface.js';
 
 /**
  * Orchestrator (§15 Agent Responsibilities) — single orchestrator for v0.1.
@@ -91,6 +94,109 @@ export class Orchestrator {
     return this.research.search(query);
   }
 
+  /**
+   * Run external research and propose recording the findings (§17 + §27).
+   *
+   * Sources come from the configured research provider — never from the
+   * model. The proposal adds research ITEMS (questions to investigate); the
+   * sourced results themselves are listed in the assistant reply and remain
+   * reviewable in the Research view. Nothing enters the Idea State until the
+   * human accepts the proposal, exactly like any model-proposed change.
+   */
+  async proposeResearchFindings(
+    question: string,
+  ): Promise<{ message: ChatMessage; proposal: StoredProposal }> {
+    const trimmed = question.trim();
+    if (!trimmed) {
+      throw new AppError('BAD_REQUEST', 'Research question is empty.');
+    }
+    const result = await this.research.search({ question: trimmed, max_results: 5 });
+    if (result.sources.length === 0) {
+      throw new AppError('RESEARCH_UNAVAILABLE', 'The research provider returned no usable sources.', {
+        recoverable: true,
+      });
+    }
+
+    const sourceLines = result.sources.map(
+      (src, i) =>
+        `${i + 1}. ${src.title}${src.publication_date ? ` (${src.publication_date})` : ''} — ${src.url}`,
+    );
+    const reply = [
+      `Research: “${trimmed}”`,
+      '',
+      `Retrieved ${result.sources.length} sourced result(s) via ${this.research.displayName}. Sources:`,
+      ...sourceLines,
+      '',
+      'I propose recording this as a research item in the Idea State. Review the sources before accepting — I did not verify their claims.',
+    ].join('\n');
+
+    const emptySet = { added: [], modified: [] };
+    const proposal = {
+      changes: {
+        goals: emptySet,
+        requirements: emptySet,
+        assumptions: emptySet,
+        constraints: emptySet,
+        unknowns: emptySet,
+        risks: emptySet,
+        dependencies: emptySet,
+        evidence: emptySet,
+        research_items: {
+          added: [
+            {
+              question: trimmed,
+              rationale: `External research via ${this.research.displayName}: ${result.sources.length} sources retrieved ${result.retrieved_at}.`,
+              priority: 'medium' as const,
+            },
+          ],
+          modified: [],
+        },
+        alternatives: emptySet,
+        decisions: emptySet,
+        rejected_approaches: emptySet,
+        open_questions: emptySet,
+      },
+      impact_analysis: [
+        {
+          area: 'Research',
+          effect: 'Adds one research question with sourced context to investigate.',
+          reason: 'Human-initiated research; sources are external and unverified by the model.',
+        },
+      ],
+      conflicts: [],
+      questions: [],
+      reasoning_summary: `Sourced research via ${this.research.displayName} — ${result.sources.length} results. Model statements are not evidence; only provider-returned sources are cited.`,
+    };
+
+    const validation = validateProposal(this.caseData, proposal);
+    if (validation.errors.length > 0) {
+      throw new AppError('VALIDATION_FAILED', 'Research proposal failed semantic validation.', {
+        detail: validation.errors,
+      });
+    }
+
+    const stored: StoredProposal = {
+      id: prefixedId('prop'),
+      status: 'pending',
+      created_at: iso(this.clock),
+      user_message: `[research] ${trimmed}`,
+      proposal,
+      provider: this.research.id,
+      warnings: validation.warnings,
+    };
+    await this.store.saveProposal(stored);
+
+    const message: ChatMessage = {
+      id: prefixedId('msg'),
+      role: 'assistant',
+      content: reply,
+      created_at: iso(this.clock),
+      proposal_id: stored.id,
+    };
+    await this.store.appendMessage(message);
+    return { message, proposal: stored };
+  }
+
   // -------------------------------------------------------------------------
 
   /**
@@ -100,6 +206,7 @@ export class Orchestrator {
   async *handleUserMessage(
     text: string,
     signal?: AbortSignal,
+    opts?: { deep?: boolean },
   ): AsyncGenerator<ChatEvent, TurnOutcome | undefined> {
     const trimmed = text.trim();
     if (!trimmed) {
@@ -204,6 +311,42 @@ export class Orchestrator {
         return { messageId: assistantMessage.id };
       }
 
+      const warnings = [...validation.warnings];
+      let critique: z.infer<typeof CritiqueSchema> | undefined;
+
+      if (opts?.deep) {
+        // Deep analysis: adversarial second pass over the draft. Findings
+        // are surfaced to the human; they never mutate the proposal.
+        yield { type: 'status', phase: 'critiquing' };
+        try {
+          const crit = buildCritiqueMessages(this.caseData, envelope.proposal, trimmed);
+          const critRun = await this.runtime.runStructured<CritiqueType>({
+            task: 'critique',
+            system: crit.system,
+            messages: crit.messages,
+            schemaName: 'ideno_critique',
+            zodSchema: CritiqueSchema,
+            wireSchema: buildCritiqueWireSchema(),
+            temperature: 0.3,
+            signal,
+          });
+          const found: CritiqueType = critRun.value;
+          critique = found;
+          for (const issue of found.issues) {
+            warnings.push(`Critique (${issue.severity}) — ${issue.area}: ${issue.description}`);
+          }
+          for (const m of found.missing_considerations) {
+            warnings.push(`Critique — possibly missing: ${m}`);
+          }
+        } catch (err) {
+          // A failed critique must not lose the user's turn: the proposal
+          // proceeds with a warning that the deep pass did not complete.
+          warnings.push(
+            `Deep-analysis pass failed (${err instanceof Error ? err.message : String(err)}); proposal was not adversarially reviewed.`,
+          );
+        }
+      }
+
       const stored: StoredProposal = {
         id: prefixedId('prop'),
         status: 'pending',
@@ -211,7 +354,8 @@ export class Orchestrator {
         user_message: trimmed,
         proposal: envelope.proposal,
         provider: providerLabel,
-        warnings: validation.warnings,
+        warnings,
+        ...(critique ? { critique } : {}),
       };
       await this.store.saveProposal(stored);
       assistantMessage.proposal_id = stored.id;

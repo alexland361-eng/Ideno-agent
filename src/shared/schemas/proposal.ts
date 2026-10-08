@@ -275,6 +275,23 @@ export const ProposalStatus = z.enum(PROPOSAL_STATUSES);
 export type ProposalStatus = z.infer<typeof ProposalStatus>;
 
 /** A proposal as stored/inspected server-side, with lifecycle metadata. */
+/** One adversarial finding from a deep-analysis (critique) pass. */
+export const CritiqueIssue = z.object({
+  severity: z.enum(['high', 'medium', 'low']),
+  area: z.string().min(1),
+  description: z.string().min(1),
+});
+export type CritiqueIssue = z.infer<typeof CritiqueIssue>;
+
+/** Result of the second-pass adversarial review (deep analysis mode). */
+export const CritiqueResult = z.object({
+  issues: z.array(CritiqueIssue).default([]),
+  missing_considerations: z.array(z.string()).default([]),
+  questions: z.array(z.string()).default([]),
+  summary: z.string().default(''),
+});
+export type CritiqueResult = z.infer<typeof CritiqueResult>;
+
 export const StoredProposal = z.object({
   id: z.string().min(1),
   status: ProposalStatus,
@@ -289,5 +306,7 @@ export const StoredProposal = z.object({
   resolved_at: z.string().optional(),
   resulting_version: z.number().int().optional(),
   rejection_reason: z.string().optional(),
+  /** Deep-analysis (adversarial critique) findings, when that mode ran. */
+  critique: CritiqueResult.optional(),
 });
 export type StoredProposal = z.infer<typeof StoredProposal>;

@@ -249,6 +249,24 @@ const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => 
     if (stored) stored.status = 'rejected';
     return jsonBody(stored);
   }
+  if (url === '/api/research' && method === 'POST') {
+    return jsonBody({
+      query: { question: JSON.parse(String(init?.body ?? '{}')).question },
+      sources: [
+        {
+          title: 'Balcony greenhouse light requirements',
+          url: 'https://docs.example.org/herbs/light',
+          source_type: 'documentation',
+          excerpt: 'Most culinary herbs need 6+ hours of direct light.',
+          publication_date: '2024-11-01',
+        },
+      ],
+      retrieved_at: '2026-10-08T10:00:00Z',
+    });
+  }
+  if (url === '/api/research/propose' && method === 'POST') {
+    return jsonBody({ message: { id: 'msg-r1', role: 'assistant', content: 'research', created_at: 't' }, proposal: proposals[0] ?? null });
+  }
   if (url === '/api/case/reset' && method === 'POST') {
     freshState();
     return jsonBody({ case: caseData, versions, proposals, messages, load_warnings: [] });
@@ -452,6 +470,47 @@ describe('Ideno UI', () => {
     expect(await screen.findByText('provider unavailable')).toBeDefined();
     expect(screen.getByText(/Could not reach provider demo/i)).toBeDefined();
     expect(screen.getByText(/try sending the message again/i)).toBeDefined();
+  });
+
+  it('sends the deep-analysis flag when the Deep toggle is on', async () => {
+    render(<App />);
+    await screen.findByText('No idea yet.');
+    fireEvent.click(screen.getByRole('button', { name: /deep analysis|deep/i }));
+    const composer = screen.getByRole('textbox', { name: 'Message to Ideno' });
+    fireEvent.change(composer, { target: { value: 'hello' } });
+    fireEvent.keyDown(composer, { key: 'Enter' });
+    await waitFor(() => {
+      const chatCall = mockFetch.mock.calls.find((c) => String(c[0]) === '/api/chat');
+      expect(chatCall).toBeDefined();
+      expect(String(chatCall![1]?.body)).toContain('"deep":true');
+    });
+  });
+
+  it('renders the constellation view with an interactive canvas', async () => {
+    populatedState();
+    render(<App />);
+    await screen.findByText('Balcony greenhouse', { selector: '.topbar-title' });
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    const canvas = await screen.findByRole('application');
+    expect(canvas.getAttribute('aria-label')).toContain('2 items');
+    expect(canvas.getAttribute('aria-label')).toContain('1 relations');
+  });
+
+  it('research view: configured provider shows sourced results and propose action', async () => {
+    (CONFIG as { research_provider_configured: boolean }).research_provider_configured = true;
+    render(<App />);
+    await screen.findByText('No idea yet.');
+    fireEvent.click(screen.getByRole('button', { name: 'Research' }));
+    const input = screen.getByRole('textbox', { name: 'Research question' });
+    fireEvent.change(input, { target: { value: 'How much light do herbs need?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText('Balcony greenhouse light requirements')).toBeDefined();
+    expect(
+      screen.getByRole('link', { name: 'Balcony greenhouse light requirements' }).getAttribute('href'),
+    ).toBe('https://docs.example.org/herbs/light');
+    expect(screen.getByRole('button', { name: /Propose recording in Idea State/i })).toBeDefined();
+    expect(screen.getByText(/A research provider is configured/i)).toBeDefined();
+    (CONFIG as { research_provider_configured: boolean }).research_provider_configured = false;
   });
 
   it('confirms before starting a new idea and resets the state', async () => {

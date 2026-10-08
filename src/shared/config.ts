@@ -64,10 +64,41 @@ export const TaskRoute = z.object({
 });
 export type TaskRoute = z.infer<typeof TaskRoute>;
 
-export const AI_TASKS = ['conversation'] as const;
+export const AI_TASKS = ['conversation', 'critique'] as const;
 export type AITask = (typeof AI_TASKS)[number];
 
 export const RoutingConfig = z.record(z.string(), TaskRoute);
+
+/**
+ * Research providers (§17). Separate from LLM providers: research returns
+ * SOURCED results; the model may summarize them but never invents sources.
+ * Secrets are env-var only (api_key_env); base_url can be overridden to point
+ * at a self-hosted mirror (e.g. a local SearXNG instance).
+ */
+export const TavilyResearchConfig = z.object({
+  type: z.literal('tavily'),
+  base_url: z.string().url().optional(),
+  api_key_env: z.string().default('TAVILY_API_KEY'),
+  timeout_ms: z.number().int().min(1000).max(60000).optional(),
+});
+export const BraveResearchConfig = z.object({
+  type: z.literal('brave'),
+  base_url: z.string().url().optional(),
+  api_key_env: z.string().default('BRAVE_API_KEY'),
+  timeout_ms: z.number().int().min(1000).max(60000).optional(),
+});
+export const SearXNGResearchConfig = z.object({
+  type: z.literal('searxng'),
+  /** Self-hosted SearXNG instance — no API key, stays on your network. */
+  base_url: z.string().url(),
+  timeout_ms: z.number().int().min(1000).max(60000).optional(),
+});
+export const ResearchProviderConfig = z.discriminatedUnion('type', [
+  TavilyResearchConfig,
+  BraveResearchConfig,
+  SearXNGResearchConfig,
+]);
+export type ResearchProviderConfig = z.infer<typeof ResearchProviderConfig>;
 
 export const IdenoConfig = z.object({
   server: z
@@ -86,6 +117,8 @@ export const IdenoConfig = z.object({
       recent_messages: z.number().int().min(2).max(50).default(10),
     })
     .prefault({}),
+  /** Optional research provider (§17). Absent = research explicitly unavailable. */
+  research: ResearchProviderConfig.optional(),
 });
 export type IdenoConfig = z.infer<typeof IdenoConfig>;
 
@@ -108,9 +141,20 @@ export interface RedactedProviderInfo {
   };
 }
 
+export interface RedactedResearchInfo {
+  id: string;
+  type: 'tavily' | 'brave' | 'searxng';
+  display_name: string;
+  /** Origin only — full URLs never reach the browser. */
+  base_url_origin?: string;
+  /** true when the provider runs on the user's own network. */
+  local: boolean;
+}
+
 export interface RedactedConfig {
   privacy_mode: PrivacyMode;
   providers: RedactedProviderInfo[];
   routing: Record<string, { provider: string; fallbacks: string[] }>;
-  research_provider_configured: false;
+  research_provider_configured: boolean;
+  research?: RedactedResearchInfo;
 }
