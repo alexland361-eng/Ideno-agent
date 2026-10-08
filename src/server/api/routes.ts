@@ -23,6 +23,8 @@ export interface AppDependencies {
   redactedConfig: RedactedConfig;
   webDistDir?: string;
   startupNotes: string[];
+  /** CORS: origins allowed to call the API (static UI hosting, e.g. Pages). */
+  allowedOrigins?: string[];
 }
 
 export function createApp(deps: AppDependencies) {
@@ -38,6 +40,29 @@ export function createApp(deps: AppDependencies) {
       'Content-Security-Policy',
       "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'",
     );
+    next();
+  });
+
+  // CORS for statically-hosted UIs (e.g. GitHub Pages) talking to this
+  // backend cross-origin. The browser only ever talks to THIS backend.
+  const allowedOrigins = deps.allowedOrigins ?? ['*'];
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin || !req.path.startsWith('/api/')) return next();
+    if (!allowedOrigins.includes('*') && !allowedOrigins.includes(origin)) return next();
+    if (allowedOrigins.includes('*')) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
     next();
   });
 

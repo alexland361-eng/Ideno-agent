@@ -170,11 +170,31 @@ Key invariants:
 - **Secrets never reach the browser.** The client receives only a redacted config view
   (provider ids, models, URL origins).
 
+## Deployment
+
+**GitHub Pages (UI)**: a workflow (`.github/workflows/deploy-pages.yml`) builds the
+web client and publishes it to GitHub Pages on every push to `main` (also
+dispatchable manually). Pages is static hosting — the Ideno backend cannot run
+there — so the hosted UI boots in one of two honest modes:
+
+- **Connected** — Settings → Connection: enter the URL of any reachable Ideno
+  instance (e.g. `http://192.168.1.20:8787` or a public deployment). The
+  server must list the Pages origin in `server.allowed_origins`
+  (default `["*"]`); CORS is preconfigured and supports the SSE chat stream.
+- **Offline demo** — with no server, the UI runs the *real* core state
+  machine (the same validation + versioning code the server uses, imported
+  as pure modules) with a scripted provider that is labeled everywhere.
+  Nothing is persisted, everything resets on reload, and research returns
+  the same RESEARCH_UNAVAILABLE error rather than faking results.
+
+When the backend serves the UI itself (`npm start`), it is detected
+automatically and no configuration is needed.
+
 ## Development
 
 ```bash
 npm run dev        # server (tsx watch) on :8787 + vite dev server on :5173 proxying /api
-npm test           # full test suite (123 tests: server, e2e, research, deep, 3D math, browser UI)
+npm test           # full test suite (131 tests: server, e2e, research, deep, 3D math, browser UI)
 npm run typecheck  # strict TypeScript across server + web
 npm run build      # typecheck + web build + server bundle
 ```

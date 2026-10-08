@@ -2,11 +2,104 @@ import type { ChatEvent, ChatMessage } from '../shared/chat.js';
 import type { StoredProposal, Proposal } from '../shared/schemas/proposal.js';
 import type { VersionRecord, IdeaCase } from '../shared/schemas/ideaCase.js';
 import type { RedactedConfig } from '../shared/config.js';
+import { demoBackend } from './demoBackend.js';
 
 /**
  * Typed client for the Ideno API. The browser talks only to the Ideno
  * backend — never to any AI provider directly.
+ *
+ * DEPLOYMENT MODES:
+ *  - 'server' — a real Ideno backend. Same-origin when the backend serves
+ *    this UI (npm start), or any reachable instance via a saved API base
+ *    URL (Settings → Connection; needed for static hosting such as GitHub
+ *    Pages). The backend must allow the UI's origin (server.allowed_origins).
+ *  - 'demo' — OFFLINE DEMO: no backend; the real core state machine runs in
+ *    the browser with a scripted demo provider (labeled everywhere, nothing
+ *    persisted, resets on reload, research unavailable).
  */
+
+export type ApiMode = 'server' | 'demo';
+
+const API_BASE_KEY = 'ideno.apiBase';
+
+export function readApiBase(): string {
+  try {
+    const v = localStorage.getItem(API_BASE_KEY);
+    if (v && /^https?:\/\//i.test(v)) return v.replace(/\/+$/, '');
+  } catch {
+    // storage unavailable
+  }
+  return '';
+}
+
+export function writeApiBase(base: string): boolean {
+  try {
+    const trimmed = base.trim().replace(/\/+$/, '');
+    if (!/^https?:\/\//i.test(trimmed)) return false;
+    localStorage.setItem(API_BASE_KEY, trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearApiBase(): void {
+  try {
+    localStorage.removeItem(API_BASE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+let cachedMode: ApiMode | null = null;
+
+/**
+ * Determine the mode once per session:
+ *  1. A saved API base URL wins (explicit user configuration).
+ *  2. Otherwise probe same-origin /api/health (the backend serving this UI).
+ *  3. Otherwise fall back to the clearly-labeled offline demo.
+ */
+export async function initApiMode(): Promise<ApiMode> {
+  if (cachedMode) return cachedMode;
+  const base = readApiBase();
+  if (base) {
+    cachedMode = 'server';
+    return cachedMode;
+  }
+  try {
+    const res = await fetch('/api/health', {
+      signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(3000) : undefined,
+    });
+    if (res.ok) {
+      cachedMode = 'server';
+      return cachedMode;
+    }
+  } catch {
+    // unreachable → not served by a backend
+  }
+  cachedMode = 'demo';
+  return cachedMode;
+}
+
+export async function getApiMode(): Promise<ApiMode> {
+  return cachedMode ?? initApiMode();
+}
+
+/** Test hook: forget the cached mode (module state persists across renders). */
+export function resetApiModeCache(): void {
+  cachedMode = null;
+}
+
+function apiUrl(path: string): string {
+  return readApiBase() + path;
+}
+
+function toThrown(shape: { code?: string; message?: string; detail?: string[]; recoverable?: boolean }): never {
+  const err = new Error(shape.message ?? 'Request failed.') as Error & { code?: string; detail?: string[] };
+  err.code = shape.code;
+  err.detail = shape.detail;
+  throw err;
+}
 
 export interface CaseStateResponse {
   case: IdeaCase;
@@ -53,30 +146,36 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 export async function fetchCaseState(): Promise<CaseStateResponse> {
-  return json<CaseStateResponse>(await fetch('/api/case'));
+  if ((await getApiMode()) === 'demo') return demoBackend.getCaseState();
+  return json<CaseStateResponse>(await fetch(apiUrl('/api/case')));
 }
 
 export async function fetchConfig(): Promise<RedactedConfig & { startup_notes: string[] }> {
-  return json(await fetch('/api/config'));
+  if ((await getApiMode()) === 'demo') return demoBackend.getConfig();
+  return json(await fetch(apiUrl('/api/config')));
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
-  return json<HealthResponse>(await fetch('/api/health'));
+  if ((await getApiMode()) === 'demo') return demoBackend.getHealth();
+  return json<HealthResponse>(await fetch(apiUrl('/api/health')));
 }
 
 export async function fetchVersion(n: number): Promise<{ version: VersionRecord }> {
-  return json(await fetch(`/api/versions/${n}`));
+  if ((await getApiMode()) === 'demo') return demoBackend.getVersion(n);
+  return json(await fetch(apiUrl(`/api/versions/${n}`)));
 }
 
 export async function acceptProposal(
   id: string,
 ): Promise<{ case: IdeaCase; version: { number: number; summary: string; created_at: string } }> {
-  const res = await fetch(`/api/proposals/${id}/accept`, { method: 'POST' });
+  if ((await getApiMode()) === 'demo') return demoBackend.acceptProposal(id);
+  const res = await fetch(apiUrl(`/api/proposals/${id}/accept`), { method: 'POST' });
   return json(res);
 }
 
 export async function rejectProposal(id: string, reason?: string): Promise<StoredProposal> {
-  const res = await fetch(`/api/proposals/${id}/reject`, {
+  if ((await getApiMode()) === 'demo') return demoBackend.rejectProposal(id, reason);
+  const res = await fetch(apiUrl(`/api/proposals/${id}/reject`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reason }),
@@ -85,7 +184,8 @@ export async function rejectProposal(id: string, reason?: string): Promise<Store
 }
 
 export async function resetCase(): Promise<CaseStateResponse> {
-  return json(await fetch('/api/case/reset', { method: 'POST' }));
+  if ((await getApiMode()) === 'demo') return demoBackend.resetCase();
+  return json(await fetch(apiUrl('/api/case/reset'), { method: 'POST' }));
 }
 
 /** Research search — throws a classified error when no provider is configured. */
@@ -104,7 +204,14 @@ export interface ResearchResponse {
 }
 
 export async function researchSearch(question: string, keywords?: string[]): Promise<ResearchResponse> {
-  const res = await fetch('/api/research', {
+  if ((await getApiMode()) === 'demo') {
+    try {
+      return await demoBackend.researchSearch();
+    } catch (shape) {
+      toThrown(shape as { code?: string; message?: string; detail?: string[] });
+    }
+  }
+  const res = await fetch(apiUrl('/api/research'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, keywords }),
@@ -116,7 +223,14 @@ export async function researchSearch(question: string, keywords?: string[]): Pro
 export async function proposeResearch(
   question: string,
 ): Promise<{ message: ChatMessage; proposal: StoredProposal }> {
-  const res = await fetch('/api/research/propose', {
+  if ((await getApiMode()) === 'demo') {
+    try {
+      return await demoBackend.proposeResearch();
+    } catch (shape) {
+      toThrown(shape as { code?: string; message?: string; detail?: string[] });
+    }
+  }
+  const res = await fetch(apiUrl('/api/research/propose'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
@@ -135,7 +249,11 @@ export async function streamChat(
   signal?: AbortSignal,
   opts?: { deep?: boolean },
 ): Promise<void> {
-  const res = await fetch('/api/chat', {
+  if ((await getApiMode()) === 'demo') {
+    await demoBackend.chat(message, opts?.deep === true, onEvent, signal);
+    return;
+  }
+  const res = await fetch(apiUrl('/api/chat'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, deep: opts?.deep === true }),

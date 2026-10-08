@@ -11,8 +11,11 @@ import {
   acceptProposal,
   rejectProposal,
   resetCase,
+  initApiMode,
+  readApiBase,
   type CaseStateResponse,
   type HealthResponse,
+  type ApiMode,
 } from './api';
 import { Icon, type IconName } from './components/icons.js';
 import { Button, Dot, IconButton, Kbd, Pill, Sheet, cn, useClickOutside } from './components/glass.js';
@@ -61,6 +64,7 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [proposals, setProposals] = useState<Map<string, StoredProposal>>(new Map());
   const [config, setConfig] = useState<(RedactedConfig & { startup_notes: string[] }) | null>(null);
+  const [apiMode, setApiMode] = useState<ApiMode | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
@@ -128,10 +132,21 @@ export function App() {
   }, [notify]);
 
   useEffect(() => {
-    refresh();
-    fetchConfig().then(setConfig).catch(() => undefined);
-    fetchHealth().then(setHealth).catch(() => undefined);
-  }, [refresh]);
+    let alive = true;
+    initApiMode()
+      .then((mode) => {
+        if (!alive) return;
+        setApiMode(mode);
+        refresh();
+        fetchConfig().then(setConfig).catch(() => undefined);
+        fetchHealth().then(setHealth).catch(() => undefined);
+      })
+      .catch(() => setApiMode('demo'));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ---- highlight affected state after acceptance (§45, §46) ---- */
   const highlight = useCallback((keys: string[]) => {
@@ -502,7 +517,17 @@ export function App() {
         </div>
       </header>
 
-      {demoActive && (
+      {apiMode === 'demo' && (
+          <div className="banner offline" role="note" data-testid="offline-banner">
+            <Icon name="alert" size={13} />
+            <span>
+              <strong>Offline demo</strong> — no server connected. The real state machine runs in
+              your browser with a scripted provider (not an AI); nothing is saved and everything
+              resets on reload. {readApiBase() ? '' : 'Connect to a server in Settings → Connection for full functionality.'}
+            </span>
+          </div>
+        )}
+        {demoActive && (
         <div className="banner demo" role="note">
           <Icon name="info" size={13} />
           <span>

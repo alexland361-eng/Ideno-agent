@@ -413,3 +413,34 @@ there were NO 3D visualizations to "improve" — the constellation is new.
   the PIPELINE is what's tested.
 - Constellation aesthetics — math and lifecycle tested; visual quality
   needs human eyes on a real browser.
+
+## 2026-10-08 — v0.3.1: GitHub Pages hosting
+
+The architectural fact stated to the user up front: Pages is static-only;
+the Ideno backend (API, persistence, providers) cannot run there. Three
+pieces make the Pages deployment honest and useful:
+
+1. **Mode detection, not configuration.** initApiMode() probes same-origin
+   /api/health once per session: served by the backend → server mode
+   (zero-config, identical to before). Saved base URL (Settings →
+   Connection) → server mode cross-origin. Nothing reachable → offline
+   demo. The mode is cached module-side and reset-able for tests.
+2. **The offline demo runs the REAL state machine.** semanticValidation
+   and applyProposal are pure modules; the only Node-ism in their graph
+   was prefixedId's node:crypto — ported to Web Crypto (identical output,
+   works in Node 22 and browsers). So the browser demo validates, applies,
+   diffs, and versions proposals with the production code path, and the
+   honesty story is strong: it is a demo of the real pipeline, not a mock
+   of its results. Research still throws RESEARCH_UNAVAILABLE (research is
+   never faked), and every surface carries an OFFLINE DEMO label.
+3. **CORS for cross-origin deployments.** server.allowed_origins
+   (default ['*']); preflight + SSE headers verified with curl against a
+   Pages origin.
+
+Vite base './' makes one bundle work at / and /<repo>/. GH Actions
+workflow: npm ci → npm run build → upload dist/web → deploy-pages.
+
+Verification honesty: the Pages site itself is NOT verified from here —
+the workflow runs on GitHub's runners. Enabled Pages via the API and
+dispatched a run on the session branch; watch the Actions tab for the
+green check.

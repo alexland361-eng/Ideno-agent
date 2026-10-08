@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Appearance } from '../theme';
 import type { RedactedConfig } from '../../shared/config.js';
-import type { HealthResponse } from '../api';
+import type { HealthResponse, ApiMode } from '../api';
+import { getApiMode, readApiBase, writeApiBase, clearApiBase } from '../api';
 import { Icon } from '../components/icons.js';
 import { Button, Dot, Kbd, Pill, cn } from '../components/glass.js';
 
@@ -36,6 +37,8 @@ export function SettingsView({
       <div className="view-head">
         <h1>Settings</h1>
       </div>
+
+      <ConnectionCard />
 
       <section className="set-group glass mat-2" aria-label="Appearance">
         <div className="set-group-title">Appearance</div>
@@ -235,4 +238,76 @@ function mergeProviders(
           : 'not routed',
     };
   });
+}
+
+
+function ConnectionCard() {
+  const [mode, setMode] = useState<ApiMode | null>(null);
+  const [base, setBase] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getApiMode().then(setMode).catch(() => setMode('demo'));
+    setBase(readApiBase());
+  }, []);
+
+  const connect = () => {
+    if (!writeApiBase(base)) {
+      setError('Enter a full URL, e.g. http://192.168.1.20:8787 or https://ideno.example.org');
+      return;
+    }
+    window.location.reload();
+  };
+
+  const useDemo = () => {
+    clearApiBase();
+    window.location.reload();
+  };
+
+  return (
+    <section className="set-group glass mat-2" aria-label="Connection" data-testid="connection-card">
+      <div className="set-group-title">Connection</div>
+      <div className="set-row">
+        <div>
+          <div className="set-label">
+            {mode === 'demo' ? 'Offline demo (no server)' : mode === 'server' ? 'Ideno server' : 'Detecting…'}
+          </div>
+          <div className="set-sub">
+            {mode === 'demo'
+              ? 'The real state machine runs in this browser tab with a scripted provider (not an AI). Nothing is persisted; reload resets everything. Research is unavailable.'
+              : readApiBase()
+                ? `Connected to ${readApiBase()} — full functionality with server-side persistence.`
+                : 'Connected same-origin to the serving Ideno backend.'}
+          </div>
+        </div>
+        {mode === 'demo' && <span className="pill pill-warn">OFFLINE DEMO</span>}
+        {mode === 'server' && <span className="pill pill-ok">SERVER</span>}
+      </div>
+      <div className="set-row">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="set-label">Server URL</div>
+          <div className="set-sub">
+            For static hosting (e.g. GitHub Pages): point at any reachable Ideno instance. The
+            server must list this page's origin in <code>server.allowed_origins</code>.
+          </div>
+          <div className="connection-controls">
+            <input
+              className="text-input"
+              value={base}
+              onChange={(e) => { setBase(e.target.value); setError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') connect(); }}
+              placeholder="https://your-ideno-server.example.org"
+              aria-label="Ideno server URL"
+              spellCheck={false}
+            />
+            <Button variant="primary" onClick={connect}>Connect</Button>
+            {(readApiBase() || mode === 'demo') && (
+              <Button variant="ghost" onClick={useDemo}>Use offline demo</Button>
+            )}
+          </div>
+          {error && <div className="set-sub connection-error">{error}</div>}
+        </div>
+      </div>
+    </section>
+  );
 }

@@ -105,6 +105,13 @@ export const IdenoConfig = z.object({
     .object({
       host: z.string().default('0.0.0.0'),
       port: z.number().int().min(1).max(65535).default(8787),
+      /**
+       * Origins allowed to call the API cross-origin (CORS) — for static UI
+       * deployments such as GitHub Pages. Default ['*'] is permissive but
+       * safe for typical use: the API exposes no secrets and uses no
+       * credentials. Restrict it when the server is publicly reachable.
+       */
+      allowed_origins: z.array(z.string().min(1)).default(['*']),
     })
     .prefault({}),
   data_dir: z.string().default('data'),

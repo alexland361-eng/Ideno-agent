@@ -2385,3 +2385,46 @@ s {
   font-size: 11px;
   word-break: break-all;
 }
+
+/* ---------- connection (static hosting / offline demo) ---------- */
+
+.banner.offline {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+.connection-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.connection-controls .text-input {
+  flex: 1;
+  min-width: 220px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--ink);
+  font-size: 13px;
+  outline: none;
+}
+.connection-controls .text-input:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.connection-error {
+  color: var(--danger);
+  margin-top: 6px;
+}
+.pill-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 700;
+}
+.pill-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  font-weight: 700;
+}

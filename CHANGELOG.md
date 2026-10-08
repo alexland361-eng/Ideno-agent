@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-10-08 — v0.3.1
+
+### Added
+
+- **GitHub Pages deployment**: `.github/workflows/deploy-pages.yml` builds
+  and publishes the web UI to GitHub Pages (push to `main` or manual
+  dispatch). The bundle now uses relative asset paths so it works both
+  served by the backend at `/` and at the Pages subpath.
+- **Connection modes**: the UI detects how it is served. Same-origin backend
+  → server mode (no config). A saved server URL (Settings → Connection)
+  → server mode against that instance, for static hosting. Nothing
+  reachable → the OFFLINE DEMO: the real core state machine
+  (semanticValidation + applyProposal, imported as pure modules) runs in the
+  browser with a scripted, clearly-labeled provider; nothing persists,
+  reload resets, and research still fails honestly (RESEARCH_UNAVAILABLE).
+  A banner states which mode is active.
+- **CORS** on the API for cross-origin UI deployments: `server.allowed_origins`
+  in config (default `["*"]`); OPTIONS preflight + SSE supported.
+
+### Changed
+
+- `prefixedId` now uses Web Crypto instead of `node:crypto` — identical
+  output shape, but it keeps the pure core state modules importable by the
+  browser bundle (the offline demo runs the REAL validation + versioning
+  pipeline, not a mock of it).
+
+### Verification status
+
+- Verified: 131/131 tests (7 new offline-demo tests — real apply/diff/
+  snapshot pipeline, honest research failure; new UI test boots the app
+  with every request 404ing and asserts the offline banner + connection
+  card). Build produces relative asset paths. Live checks: same-origin
+  probe 200 (server mode preserved), CORS preflight 204 + allow-origin
+  headers for a Pages origin, real chat turn still streams.
+- NOT verified: the deployed Pages site itself (the workflow must run on
+  GitHub's runners; watch the Actions tab), and browser rendering.
+
 ## 2026-10-08 — v0.3.0
 
 ### Added

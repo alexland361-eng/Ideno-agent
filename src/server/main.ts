@@ -45,6 +45,7 @@ async function main() {
     redactedConfig: redactConfig(config),
     webDistDir,
     startupNotes: notes,
+    allowedOrigins: config.server.allowed_origins,
   });
 
   const server = app.listen(config.server.port, config.server.host, () => {

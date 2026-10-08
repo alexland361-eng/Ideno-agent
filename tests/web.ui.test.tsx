@@ -13,6 +13,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { App } from '../src/web/App';
+import { resetApiModeCache } from '../src/web/api';
 import { emptyCase, nextItemId } from '../src/shared/schemas/ideaCase.js';
 import type { IdeaCase } from '../src/shared/schemas/ideaCase.js';
 import type { StoredProposal } from '../src/shared/schemas/proposal.js';
@@ -296,6 +297,7 @@ function stubDesktopMedia() {
 beforeEach(() => {
   freshState();
   localStorage.clear();
+  resetApiModeCache();
   stubDesktopMedia();
   vi.stubGlobal('fetch', mockFetch);
   mockFetch.mockClear();
@@ -511,6 +513,23 @@ describe('Ideno UI', () => {
     expect(screen.getByRole('button', { name: /Propose recording in Idea State/i })).toBeDefined();
     expect(screen.getByText(/A research provider is configured/i)).toBeDefined();
     (CONFIG as { research_provider_configured: boolean }).research_provider_configured = false;
+  });
+
+  it('boots into the labeled offline demo when no server is reachable', async () => {
+    // Everything 404s: static hosting (GitHub Pages) with no backend.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 404, json: async () => null }) as unknown as Response),
+    );
+    render(<App />);
+    // Honest offline banner + the demo's empty state — no fetches succeed.
+    expect(await screen.findByTestId('offline-banner')).toBeDefined();
+    expect(screen.getByText(/Offline demo/i)).toBeDefined();
+    expect(screen.getByText('No idea yet.')).toBeDefined();
+    // Settings shows the connection card.
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(await screen.findByTestId('connection-card')).toBeDefined();
+    expect(screen.getByText(/Offline demo \(no server\)/i)).toBeDefined();
   });
 
   it('confirms before starting a new idea and resets the state', async () => {
