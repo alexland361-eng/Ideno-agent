@@ -273,3 +273,47 @@ in order of visibility:
 
 The scanner is the lasting artifact of this round: "looks neutral" is not a
 verification state. Run the channel scan on dist, not on source.
+
+### Third revision: actually studying iOS instead of guessing
+
+Round two left light mode feeling like flat frosted plastic ("no liquid glass
+feeling") and the monochrome ink ramp read as heavy black. Before touching
+CSS again, per the user's direction the material was studied from primary and
+secondary sources: Apple's Liquid Glass announcement (newsroom, June 2025),
+the updated HIG materials guidance, and engineering write-ups on reproducing
+the effect in CSS. Findings that changed the implementation:
+
+1. **The specular edge is the single highest-value element.** "A single
+   top-edge highlight makes a panel read as glass rather than tinted film."
+   Every material now carries `inset 0 1.5px 0 rgba(255,255,255,.85)` plus a
+   faint bottom bounce and a soft lift shadow (three-line stack). We had a
+   1px edge highlight before — too weak, and only on mat-1.
+2. **Saturation pump: ~180%.** Without it the blur is "a gray rectangle."
+   We had 130% (light) / 120% (dark) — this was most of the flatness. Now
+   180% light, 160% dark, on mat-1 and mat-3.
+3. **Light glass is luminous white, not gray.** Light-mode fills were
+   white-at-0.36 over a near-white environment — nothing to see. Fills are
+   now 0.50–0.66 white over a brighter, tonally varied environment, so panes
+   read as lit glass over depth.
+4. **iOS buttons are tinted glass, not solid chips.** The monochrome pass
+   made primary/accept/send buttons solid black ink — heavy blobs that read
+   as "theme black". Primary controls are now translucent tinted glass
+   (blue/green fills at ~0.78/0.80 alpha with their own backdrop blur,
+   specular inset, and a colored glow shadow) — closer to iOS 26 controls.
+5. **Grain.** 2–3% monochromatic noise over the environment prevents
+   gradient banding and adds tangibility (added as an feTurbulence data-URI
+   overlay).
+
+The user also reversed the "no colour" directive to "keep the needed
+colours": §4 semantic hues are restored (iOS system palette values,
+text-contrast-safe variants: #0069d9 blue, #1f8a3c green, #b25c00 orange,
+#d70015 red, #7650d8 purple; lighter family in dark). Surfaces remain
+strictly achromatic — verified by the channel scanner, now with a whitelist
+of the semantic hue families instead of the zero-hue assertion. The scanner
+again caught real bugs: three residual +2 blue-channel biases in dark
+mat-1/mat-3/composer (hand-written "neutral" grays drift blue — keep
+writing them as R=G=B triples and keep scanning dist).
+
+Design principle worth keeping: hue is a *vocabulary* (blue=active,
+green=accepted, red=conflict), surfaces are the *paper* — iOS itself works
+this way; the glass never carries color, the controls do.

@@ -41,15 +41,19 @@
 
 ### Changed
 
-- **Fully achromatic interface (post-review revisions)**: the UI carries
-  **zero hue** — surfaces, borders, shadows, environment, accents, buttons,
-  focus rings, selection, badges, timeline, favicon: every color is neutral
-  white/gray/black (verified by a channel scan of the built CSS: R=G=B for
-  every value in both themes). State meaning is carried by tone strength,
-  icons, and text labels rather than color; solid-ink vs outline buttons
-  distinguish primary from destructive actions. Material transparency
-  increased (panes 0.36, cards 0.22, overlays 0.62 in light; comparable in
-  dark): the blur does the work of legibility, not opacity.
+- **iOS-studied Liquid Glass materials (post-review revisions)**: the
+  glass follows Apple's Liquid Glass principles — translucent luminous
+  fills (never flat gray), specular top-edge highlights with a faint
+  bottom bounce on every material, `saturate(180%)` behind the blur, and
+  a subtle film grain over the environment. Primary controls are tinted
+  liquid glass (translucent blue/green fills with their own blur and
+  specular edge), not solid plastic. Surfaces, borders, shadows, inks,
+  and the environment stay exactly achromatic; hue appears only on
+  semantic elements (§4): interactive blue, accepted green, uncertainty
+  orange, conflict red, AI-exploration purple. Verified by a channel
+  scan of the built CSS: every non-semantic value is R=G=B in both
+  themes. (Design studied from Apple's Liquid Glass announcement and
+  HIG materials guidance, plus CSS reproduction write-ups.)
 - `src/web/` restructured: `styles/` (tokens + app), `components/` (glass
   primitives, icons, conversation, state panel, palette, toasts, markdown),
   `views/` (history, research, settings). Old single-file UI removed.

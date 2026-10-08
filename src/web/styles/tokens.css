@@ -4,15 +4,19 @@
    Layers (§3):  environment → mat-1 (primary panes) → mat-2 (nested cards,
    NO blur) → mat-3 (floating: sheets, palette, popovers, toasts) → controls.
 
-   Light is the default; [data-theme="dark"] overrides with intentionally
-   designed values — dark is NOT an inversion (§5).
-
-   FULLY ACHROMATIC (user directive): the interface carries ZERO hue —
-   surfaces, borders, shadows, environment, accents, focus rings, and
-   selection are all neutral white / gray / black. State meaning is carried
-   by tone strength, icons, and text labels, never by color.
-   Transparency: panes let the environment read through (blur does the work
-   of legibility, not opacity).
+   MATERIAL PHILOSOPHY (studied from Apple's Liquid Glass, iOS 26 / HIG):
+   - Glass is TRANSLUCENT and BRIGHT: fills are luminous white (light) or
+     smoky graphite (dark) at low alpha — the blur, not the fill, provides
+     legibility. Never a flat gray rectangle.
+   - SPECULAR EDGES: every material carries a top-edge highlight and a faint
+     bottom bounce (glass catches light at the top). This is what makes a
+     panel read as glass rather than tinted film.
+   - SATURATION BOOST: backdrop-filter saturate(180%) — the saturation pump
+     keeps blurred content alive instead of muddy.
+   - HUE IS MEANING (§4): surfaces, borders, shadows, inks, and the
+     environment are achromatic. Hue appears ONLY on semantic elements —
+     interactive accents (iOS system blue), accepted/verify (green),
+     uncertainty (orange), conflict/error (red), AI exploration (purple).
    ========================================================================== */
 
 :root {
@@ -60,113 +64,126 @@
   --t-label: 650 10.5px / 1.2 var(--font-ui);
   --t-label-tracking: 0.05em;
 
-  /* ---- semantic accents: MONOCHROME RAMP (user directive: no colour) ----
-     The interface carries zero hue. State meaning is communicated by tone
-     (ink strength), icons, and text labels — never by color. Token names are
-     kept so every consumer reads intent; values are a neutral ink ramp:
-       accent / ok / danger -> full ink (primary, accepted, conflict all read
-                                as strongest-contrast states)
-       warn / explore / teal -> mid gray (secondary, softer states)      */
-  --accent: #1d1d1d;            /* information / active / primary action */
-  --accent-soft: rgba(0, 0, 0, 0.075);
-  --accent-strong: #000000;
-  --ok: #1d1d1d;                /* accepted / verified */
-  --ok-soft: rgba(0, 0, 0, 0.06);
-  --warn: #6b6b6b;              /* uncertainty / attention */
-  --warn-soft: rgba(0, 0, 0, 0.05);
-  --danger: #1d1d1d;            /* conflict / error */
-  --danger-soft: rgba(0, 0, 0, 0.085);
-  --explore: #6b6b6b;           /* AI-generated possibility */
-  --explore-soft: rgba(0, 0, 0, 0.045);
-  --teal: #6b6b6b;
+  /* ---- semantic accents (§4: hue carries meaning, iOS system palette) ----
+     Text-contrast-safe variants for labels; *-fill tokens are the tinted
+     liquid-glass fills for primary controls. */
+  --accent: #0069d9;             /* information / active / links */
+  --accent-soft: rgba(0, 105, 217, 0.10);
+  --accent-strong: #0052ad;
+  --accent-fill: rgba(0, 113, 227, 0.78);      /* tinted glass button */
+  --accent-glow: rgba(0, 113, 227, 0.25);
+  --ok: #1f8a3c;                 /* accepted / verified */
+  --ok-soft: rgba(31, 138, 60, 0.10);
+  --ok-fill: rgba(31, 138, 60, 0.80);
+  --ok-glow: rgba(31, 138, 60, 0.22);
+  --warn: #b25c00;               /* uncertainty / attention */
+  --warn-soft: rgba(178, 92, 0, 0.10);
+  --danger: #d70015;             /* conflict / error (Apple a11y red) */
+  --danger-soft: rgba(215, 0, 21, 0.09);
+  --explore: #7650d8;            /* AI-generated possibility */
+  --explore-soft: rgba(118, 80, 216, 0.09);
+  --teal: #0f7d84;
 
-  --focus-ring: rgba(0, 0, 0, 0.45);
+  --focus-ring: rgba(0, 105, 217, 0.5);
 
-  /* ---- LIGHT appearance: clear neutral glass ---- */
-  --env-base: #ececec;                       /* neutral gray, no hue */
-  --env-light: rgba(255, 255, 255, 0.85);    /* white light from above */
-  --env-tint-a: rgba(0, 0, 0, 0.030);        /* neutral atmospheric shading — */
-  --env-tint-b: rgba(0, 0, 0, 0.016);        /* tonal depth for the blur, zero chroma */
+  /* ---- LIGHT appearance: luminous clear glass ---- */
+  --env-base: #ececec;                       /* neutral, no hue */
+  --env-light: rgba(255, 255, 255, 0.9);     /* bright light from above */
+  --env-tint-a: rgba(0, 0, 0, 0.045);        /* tonal depth for the blur */
+  --env-tint-b: rgba(0, 0, 0, 0.025);
 
-  --ink: #262626;
-  --ink-dim: #5d5d5d;
+  --ink: #1c1c1c;
+  --ink-dim: #555555;
   --ink-faint: #8a8a8a;
 
-  --mat-1-bg: rgba(255, 255, 255, 0.36);
-  --mat-1-blur: 26px;
-  --mat-1-sat: 130%;
-  --mat-1-border: rgba(61, 61, 61, 0.11);
-  --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  --mat-1-shadow: 0 12px 40px rgba(0, 0, 0, 0.11);
+  --mat-1-bg: rgba(255, 255, 255, 0.50);
+  --mat-1-blur: 28px;
+  --mat-1-sat: 180%;
+  --mat-1-border: rgba(0, 0, 0, 0.075);
+  --mat-1-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+  --mat-1-shadow: 0 10px 34px rgba(0, 0, 0, 0.12);
 
-  --mat-2-bg: rgba(255, 255, 255, 0.22);
-  --mat-2-bg-hover: rgba(255, 255, 255, 0.42);
-  --mat-2-border: rgba(61, 61, 61, 0.08);
+  --mat-2-bg: rgba(255, 255, 255, 0.32);
+  --mat-2-bg-hover: rgba(255, 255, 255, 0.52);
+  --mat-2-border: rgba(0, 0, 0, 0.055);
+  --mat-2-edge: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
-  --mat-3-bg: rgba(255, 255, 255, 0.62);
-  --mat-3-blur: 38px;
-  --mat-3-border: rgba(61, 61, 61, 0.13);
-  --mat-3-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+  --mat-3-bg: rgba(255, 255, 255, 0.66);
+  --mat-3-blur: 40px;
+  --mat-3-border: rgba(0, 0, 0, 0.09);
+  --mat-3-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+  --mat-3-shadow: 0 24px 70px rgba(0, 0, 0, 0.20);
 
-  --control-bg: rgba(61, 61, 61, 0.06);
-  --control-bg-hover: rgba(61, 61, 61, 0.11);
-  --control-bg-active: rgba(61, 61, 61, 0.15);
-  --control-border: rgba(61, 61, 61, 0.09);
+  --control-bg: rgba(0, 0, 0, 0.05);
+  --control-bg-hover: rgba(0, 0, 0, 0.09);
+  --control-bg-active: rgba(0, 0, 0, 0.13);
+  --control-border: rgba(0, 0, 0, 0.08);
 
-  --composer-bg: rgba(255, 255, 255, 0.46);
+  --composer-bg: rgba(255, 255, 255, 0.55);
 
-  --bubble-user: rgba(61, 61, 61, 0.09);      /* frosted gray — user */
-  --bubble-user-border: rgba(61, 61, 61, 0.16);
-  --bubble-ai: rgba(255, 255, 255, 0.36);     /* clear white — Ideno */
-  --bubble-ai-border: rgba(61, 61, 61, 0.09);
+  --bubble-user: rgba(0, 105, 217, 0.13);    /* your words — accent-tinted glass */
+  --bubble-user-border: rgba(0, 105, 217, 0.22);
+  --bubble-ai: rgba(255, 255, 255, 0.42);    /* Ideno — clear white glass */
+  --bubble-ai-border: rgba(0, 0, 0, 0.06);
 
-  --divider: rgba(61, 61, 61, 0.10);
+  --divider: rgba(0, 0, 0, 0.09);
   --scrim: rgba(0, 0, 0, 0.30);
 
   --chip-ink: #545454;
-  --scrollbar: rgba(61, 61, 61, 0.26);
+  --scrollbar: rgba(0, 0, 0, 0.24);
+  --noise-opacity: 0.035;
 }
 
 [data-theme='dark'] {
-  /* ---- DARK appearance: neutral graphite glass, restrained luminance ---- */
-  --env-base: #0b0b0b;
-  --env-light: rgba(255, 255, 255, 0.05);
-  --env-tint-a: rgba(255, 255, 255, 0.045);
-  --env-tint-b: rgba(255, 255, 255, 0.025);
+  /* ---- DARK appearance: smoky transparent graphite glass ---- */
+  --env-base: #0a0a0a;
+  --env-light: rgba(255, 255, 255, 0.055);
+  --env-tint-a: rgba(255, 255, 255, 0.04);
+  --env-tint-b: rgba(255, 255, 255, 0.02);
 
-  --ink: #ebebeb;
-  --ink-dim: #a9a9a9;
-  --ink-faint: #707070;
+  --ink: #f2f2f2;
+  --ink-dim: #a7a7a7;
+  --ink-faint: #6f6f6f;
 
-  --accent: #f2f2f2;
-  --accent-soft: rgba(255, 255, 255, 0.11);
-  --accent-strong: #ffffff;
-  --ok: #f2f2f2;
-  --ok-soft: rgba(255, 255, 255, 0.09);
-  --warn: #b3b3b3;
-  --warn-soft: rgba(255, 255, 255, 0.075);
-  --danger: #f2f2f2;
-  --danger-soft: rgba(255, 255, 255, 0.13);
-  --explore: #b3b3b3;
-  --explore-soft: rgba(255, 255, 255, 0.065);
-  --teal: #b3b3b3;
+  --accent: #79b8ff;
+  --accent-soft: rgba(120, 185, 255, 0.13);
+  --accent-strong: #9ccbff;
+  --accent-fill: rgba(10, 132, 255, 0.55);
+  --accent-glow: rgba(10, 132, 255, 0.3);
+  --ok: #45c465;
+  --ok-soft: rgba(69, 196, 101, 0.12);
+  --ok-fill: rgba(48, 209, 88, 0.45);
+  --ok-glow: rgba(48, 209, 88, 0.22);
+  --warn: #f09a2a;
+  --warn-soft: rgba(240, 154, 42, 0.12);
+  --danger: #ff6b61;
+  --danger-soft: rgba(255, 107, 97, 0.13);
+  --explore: #c3a6ff;
+  --explore-soft: rgba(195, 166, 255, 0.12);
+  --teal: #5bd0d6;
 
-  --focus-ring: rgba(255, 255, 255, 0.5);
+  --focus-ring: rgba(120, 185, 255, 0.55);
 
-  --mat-1-bg: rgba(30, 30, 30, 0.48);
-  --mat-1-blur: 26px;
-  --mat-1-sat: 120%;
-  --mat-1-border: rgba(255, 255, 255, 0.09);
-  --mat-1-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  --mat-1-shadow: 0 14px 44px rgba(0, 0, 0, 0.48);
+  --mat-1-bg: rgba(28, 28, 28, 0.46);
+  --mat-1-blur: 28px;
+  --mat-1-sat: 160%;
+  --mat-1-border: rgba(255, 255, 255, 0.11);
+  --mat-1-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.17),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  --mat-1-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
 
-  --mat-2-bg: rgba(255, 255, 255, 0.05);
-  --mat-2-bg-hover: rgba(255, 255, 255, 0.09);
-  --mat-2-border: rgba(255, 255, 255, 0.06);
+  --mat-2-bg: rgba(255, 255, 255, 0.055);
+  --mat-2-bg-hover: rgba(255, 255, 255, 0.095);
+  --mat-2-border: rgba(255, 255, 255, 0.07);
+  --mat-2-edge: inset 0 1px 0 rgba(255, 255, 255, 0.09);
 
-  --mat-3-bg: rgba(32, 32, 32, 0.70);
-  --mat-3-blur: 38px;
-  --mat-3-border: rgba(255, 255, 255, 0.12);
+  --mat-3-bg: rgba(30, 30, 30, 0.62);
+  --mat-3-blur: 40px;
+  --mat-3-border: rgba(255, 255, 255, 0.13);
+  --mat-3-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
   --mat-3-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
 
   --control-bg: rgba(255, 255, 255, 0.07);
@@ -174,22 +191,23 @@
   --control-bg-active: rgba(255, 255, 255, 0.17);
   --control-border: rgba(255, 255, 255, 0.08);
 
-  --composer-bg: rgba(24, 24, 24, 0.56);
+  --composer-bg: rgba(24, 24, 24, 0.52);
 
-  --bubble-user: rgba(255, 255, 255, 0.11);
-  --bubble-user-border: rgba(255, 255, 255, 0.18);
-  --bubble-ai: rgba(255, 255, 255, 0.05);
+  --bubble-user: rgba(10, 132, 255, 0.20);
+  --bubble-user-border: rgba(10, 132, 255, 0.32);
+  --bubble-ai: rgba(255, 255, 255, 0.06);
   --bubble-ai-border: rgba(255, 255, 255, 0.07);
 
   --divider: rgba(255, 255, 255, 0.09);
   --scrim: rgba(0, 0, 0, 0.55);
 
   --chip-ink: #b3b3b3;
-  --scrollbar: rgba(255, 255, 255, 0.19);
+  --scrollbar: rgba(255, 255, 255, 0.18);
+  --noise-opacity: 0.05;
 }
 
-/* ---- graceful degradation (§43): without backdrop-filter, surfaces become
-   more opaque so text stays readable; layout and function are unaffected. --- */
+/* ---- graceful degradation (§43 / HIG Reduce Transparency): without
+   backdrop-filter, surfaces become more opaque so text stays readable. --- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
     --mat-1-bg: rgba(248, 248, 248, 0.96);

@@ -83,9 +83,12 @@ npm run provider:check nvidia-nim      # provider id from your config
 
 ## The interface
 
-The web client is a **Liquid Glass** design: layered translucent materials
-(blurred panes, opaque nested cards, floating overlays) in light, dark, and
-system appearance. Its spatial model puts the **Idea State at the center** —
+The web client is a **Liquid Glass** design modeled on Apple's iOS materials:
+luminous translucent panes with specular top-edge highlights and saturation
+boost behind the blur, opaque nested cards, floating overlays, and a film-grain
+environment — in light, dark, and system appearance. Color is meaning-only:
+the glass itself is achromatic; blue marks interactive/active elements, green
+accepted, orange uncertain, red conflicting. Its spatial model puts the **Idea State at the center** —
 the conversation is on the left, the live state on the right, resizable and
 persisted between sessions. Every state item opens an inspector sheet
 (provenance, knowledge class, related evidence and decisions); every accepted

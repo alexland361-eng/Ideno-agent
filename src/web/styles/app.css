@@ -41,6 +41,18 @@ body::before {
     radial-gradient(1000px 600px at 112% 18%, var(--env-tint-a), transparent 58%);
 }
 
+/* Subtle monochromatic grain over the environment: dithering that keeps the
+   glass gradients from banding and gives the material a tangible feel. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 ::selection {
   background: var(--accent-soft);
 }
@@ -120,15 +132,16 @@ code {
 .mat-2 {
   background: var(--mat-2-bg);
   border: 1px solid var(--mat-2-border);
+  box-shadow: var(--mat-2-edge);
 }
 
 /* Floating surfaces: sheets, palette, popovers, tab bar. */
 .mat-3 {
   background: var(--mat-3-bg);
-  -webkit-backdrop-filter: blur(var(--mat-3-blur)) saturate(150%);
-  backdrop-filter: blur(var(--mat-3-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--mat-3-blur)) saturate(180%);
+  backdrop-filter: blur(var(--mat-3-blur)) saturate(180%);
   border: 1px solid var(--mat-3-border);
-  box-shadow: var(--mat-3-shadow);
+  box-shadow: var(--mat-3-edge), var(--mat-3-shadow);
 }
 
 /* ---------- controls ---------- */
@@ -165,27 +178,26 @@ code {
   font-size: 12.5px;
 }
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-fill);
   border-color: transparent;
   color: #fff;
-}
-[data-theme='dark'] .btn-primary {
-  color: #0d0d0d;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 6px 18px var(--accent-glow);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-strong);
-  filter: brightness(1.04);
+  filter: brightness(1.07);
 }
 .btn-accept {
-  background: var(--ok);
+  background: var(--ok-fill);
   border-color: transparent;
   color: #fff;
-}
-[data-theme='dark'] .btn-accept {
-  color: #0d0d0d;
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 18px var(--ok-glow);
 }
 .btn-accept:hover:not(:disabled) {
-  filter: brightness(1.06);
+  filter: brightness(1.07);
 }
 .btn-danger {
   background: transparent;
@@ -738,14 +750,14 @@ code {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--accent);
+  background: var(--accent-fill);
   color: #fff;
   flex-shrink: 0;
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 6px 18px var(--accent-glow);
   transition: transform var(--m-fast) var(--ease-spring), filter var(--m-fast) ease,
     opacity var(--m-fast) ease;
-}
-[data-theme='dark'] .send-btn {
-  color: #0d0d0d;
 }
 .send-btn:hover:not(:disabled) {
   filter: brightness(1.08);
@@ -1761,8 +1773,8 @@ s {
   margin: 8px 0 0;
 }
 .demo-tag {
-  background: var(--control-bg-active);
-  color: var(--ink);
+  background: var(--warn-soft);
+  color: var(--warn);
   font-weight: 800;
   font-size: 9.5px;
   border-radius: 4px;
