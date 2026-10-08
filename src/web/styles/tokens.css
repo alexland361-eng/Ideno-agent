@@ -8,9 +8,15 @@
    - Glass is TRANSLUCENT and BRIGHT: fills are luminous white (light) or
      smoky graphite (dark) at low alpha — the blur, not the fill, provides
      legibility. Never a flat gray rectangle.
-   - SPECULAR EDGES: every material carries a top-edge highlight and a faint
-     bottom bounce (glass catches light at the top). This is what makes a
-     panel read as glass rather than tinted film.
+   - SPECULAR EDGES + BEVEL RIM: every material catches light at the top
+     (1.5px highlight), bounces faintly at the bottom, and darkens at the
+     side edges — the rim of a real lens (iOS 27 lighting: subtler top
+     light, darkened sides). This is what makes a panel read as glass
+     rather than tinted film.
+   - REFRACTION: where the browser supports url() filters in
+     backdrop-filter, an SVG displacement map (feTurbulence + feDisplacementMap)
+     bends the backdrop before the blur — glass refracts, it does not just
+     frost. Gated by html.refract (runtime detection in theme.ts).
    - SATURATION BOOST: backdrop-filter saturate(180%) — the saturation pump
      keeps blurred content alive instead of muddy.
    - HUE IS MEANING (§4): surfaces, borders, shadows, inks, and the
@@ -101,7 +107,8 @@
   --mat-1-sat: 180%;
   --mat-1-border: rgba(0, 0, 0, 0.075);
   --mat-1-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25),
+    inset 1px 0 0 rgba(0, 0, 0, 0.045), inset -1px 0 0 rgba(0, 0, 0, 0.045);
   --mat-1-shadow: 0 10px 34px rgba(0, 0, 0, 0.12);
 
   --mat-2-bg: rgba(255, 255, 255, 0.32);
@@ -113,7 +120,8 @@
   --mat-3-blur: 40px;
   --mat-3-border: rgba(0, 0, 0, 0.09);
   --mat-3-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    inset 1px 0 0 rgba(0, 0, 0, 0.05), inset -1px 0 0 rgba(0, 0, 0, 0.05);
   --mat-3-shadow: 0 24px 70px rgba(0, 0, 0, 0.20);
 
   --control-bg: rgba(0, 0, 0, 0.05);
@@ -171,7 +179,8 @@
   --mat-1-sat: 160%;
   --mat-1-border: rgba(255, 255, 255, 0.11);
   --mat-1-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.17),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    inset 1px 0 0 rgba(0, 0, 0, 0.30), inset -1px 0 0 rgba(0, 0, 0, 0.30);
   --mat-1-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
 
   --mat-2-bg: rgba(255, 255, 255, 0.055);
@@ -183,7 +192,8 @@
   --mat-3-blur: 40px;
   --mat-3-border: rgba(255, 255, 255, 0.13);
   --mat-3-edge: inset 0 1.5px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 1px 0 0 rgba(0, 0, 0, 0.32), inset -1px 0 0 rgba(0, 0, 0, 0.32);
   --mat-3-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
 
   --control-bg: rgba(255, 255, 255, 0.07);

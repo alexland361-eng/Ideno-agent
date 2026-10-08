@@ -317,3 +317,40 @@ writing them as R=G=B triples and keep scanning dist).
 Design principle worth keeping: hue is a *vocabulary* (blue=active,
 green=accepted, red=conflict), surfaces are the *paper* — iOS itself works
 this way; the glass never carries color, the controls do.
+
+### Fourth revision: implementing the published Liquid Glass principles
+
+The user supplied the Wikipedia article on Apple's Liquid Glass. Three
+principles mapped directly onto missing implementation work:
+
+1. **"Toolbars and other elements are no longer pinned to the device's
+   bezels, but are separated into bubbles."** The shell had gapped panes,
+   but attached full-height bars. Now: nav items are pills (active state =
+   accent-tinted glass, iOS sidebar selection style), buttons are capsules,
+   and all floating chrome carries 22px radii. iOS 27's "changed sidebar
+   corners" was applied to the state pane and workspace.
+2. **Refraction.** "Translucent elements that adapt to their environment,
+   refracting and reflecting elements placed behind them." Blur + specular
+   is glassmorphism, not Liquid Glass — the backdrop must BEND. Web
+   implementations per the article use SVG displacement (feTurbulence +
+   feDisplacementMap) or WebGL shaders. Chose the SVG route with zero new
+   dependencies: an inline filter (#ideno-lens, scale 14, low-frequency
+   turbulence for slow liquid undulation rather than noise) applied as
+   `backdrop-filter: url(#ideno-lens) blur(...) saturate(...)`, gated by a
+   `html.refract` class set at runtime by readback detection in theme.ts
+   (set the value, read computed style, check for 'url') — because url()
+   in backdrop-filter is Chromium-only and would silently invalidate the
+   whole declaration in Safari/Firefox if ungated. Detection runs in
+   main.tsx (not App), so the happy-dom UI tests never execute it.
+3. **iOS 27 corrections**: "subtler lighting from the top, darkened side
+   edges" → bevel rims: every material's edge stack now has the 1.5px top
+   highlight, bottom bounce, AND darkened 1px side edges (rgba(0,0,0,.045)
+   light / .30 dark). Reduced-motion and the no-backdrop-filter fallback
+   are unchanged. Kept fills at the iOS 27 "reduced default transparency"
+   levels rather than dropping them further — legibility was the loudest
+   criticism of the original release.
+
+Verification honesty: the refraction is verified structurally (rules in
+served CSS, filter in served HTML, detection in the JS bundle, class gating
+correct) — the actual visual bend cannot be verified without a Chromium
+screenshot, which this sandbox lacks.

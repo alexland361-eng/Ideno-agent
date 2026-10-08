@@ -116,3 +116,24 @@ export function writeStateWidth(width: number): void {
     // ignore
   }
 }
+
+/**
+ * Liquid Glass refraction support (progressive enhancement).
+ * True refraction needs an SVG displacement filter inside backdrop-filter —
+ * url() filters there are Chromium-only. Detect at runtime by setting the
+ * value and reading the computed style back (unsupported browsers compute
+ * 'none'), and only then let CSS apply the lens via html.refract.
+ */
+export function detectRefraction(): boolean {
+  try {
+    if (typeof document === 'undefined' || typeof CSS === 'undefined' || !CSS.supports) return false;
+    const el = document.createElement('div');
+    (el.style as CSSStyleDeclaration & { backdropFilter?: string }).backdropFilter = "url('#ideno-lens')";
+    document.body.appendChild(el);
+    const computed = getComputedStyle(el).backdropFilter ?? '';
+    document.body.removeChild(el);
+    return computed.includes('url');
+  } catch {
+    return false;
+  }
+}

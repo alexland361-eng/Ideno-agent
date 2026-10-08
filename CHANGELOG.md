@@ -54,6 +54,17 @@
   scan of the built CSS: every non-semantic value is R=G=B in both
   themes. (Design studied from Apple's Liquid Glass announcement and
   HIG materials guidance, plus CSS reproduction write-ups.)
+- **Liquid Glass behaviors (fourth revision, from the design language's
+  published principles)**: chrome detaches into floating bubbles (pill nav
+  items with accent-tinted active state, capsule buttons, 22px corners on
+  all floating panels — "toolbars are no longer pinned to the bezels");
+  **refraction** via an SVG displacement lens (feTurbulence +
+  feDisplacementMap bending the backdrop before the blur) applied as a
+  progressive enhancement in browsers that support url() filters in
+  backdrop-filter (Chromium), with plain blur everywhere else; bevel rims
+  (top light + darkened side edges, per the iOS 27 lighting adjustment);
+  and a liquid focus morph on the composer. No new dependencies — inline
+  SVG filter + runtime detection (~15 lines).
 - `src/web/` restructured: `styles/` (tokens + app), `components/` (glass
   primitives, icons, conversation, state panel, palette, toasts, markdown),
   `views/` (history, research, settings). Old single-file UI removed.

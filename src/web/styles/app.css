@@ -128,6 +128,19 @@ code {
   box-shadow: var(--mat-1-edge), var(--mat-1-shadow);
 }
 
+/* Refraction (Liquid Glass principle): in browsers that support url()
+   filters inside backdrop-filter, the backdrop is displaced by the
+   #ideno-lens SVG filter before blurring — glass bends what is behind it,
+   it does not merely frost it. Plain blur everywhere else. */
+html.refract .mat-1 {
+  -webkit-backdrop-filter: url(#ideno-lens) blur(var(--mat-1-blur)) saturate(var(--mat-1-sat));
+  backdrop-filter: url(#ideno-lens) blur(var(--mat-1-blur)) saturate(var(--mat-1-sat));
+}
+html.refract .mat-3 {
+  -webkit-backdrop-filter: url(#ideno-lens) blur(var(--mat-3-blur)) saturate(180%);
+  backdrop-filter: url(#ideno-lens) blur(var(--mat-3-blur)) saturate(180%);
+}
+
 /* Nested cards: translucent, deliberately WITHOUT blur (§42). */
 .mat-2 {
   background: var(--mat-2-bg);
@@ -151,22 +164,25 @@ code {
   align-items: center;
   gap: 7px;
   height: 34px;
-  padding: 0 15px;
-  border-radius: var(--r-md);
+  padding: 0 16px;
+  border-radius: var(--r-pill);
   font-weight: 600;
   font-size: 13.5px;
   color: var(--ink);
   background: var(--control-bg);
   border: 1px solid var(--control-border);
   transition: background var(--m-fast) ease, border-color var(--m-fast) ease,
-    transform var(--m-fast) var(--ease-spring), opacity var(--m-fast) ease;
+    transform var(--m-fast) var(--ease-spring), opacity var(--m-fast) ease,
+    box-shadow var(--m-fast) ease;
 }
 .btn:hover:not(:disabled) {
   background: var(--control-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.10);
 }
 .btn:active:not(:disabled) {
   background: var(--control-bg-active);
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -341,9 +357,9 @@ code {
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 50px;
+  height: 52px;
   padding: 0 12px 0 14px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   flex-shrink: 0;
   z-index: var(--z-topbar);
 }
@@ -430,7 +446,7 @@ code {
   flex-direction: column;
   gap: 3px;
   padding: 10px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   z-index: var(--z-nav);
 }
 
@@ -438,8 +454,8 @@ code {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--r-md);
+  padding: 9px 13px;
+  border-radius: var(--r-pill);
   color: var(--ink-dim);
   font-weight: 550;
   font-size: 13.5px;
@@ -451,9 +467,9 @@ code {
   color: var(--ink);
 }
 .navitem.active {
-  background: var(--mat-2-bg-hover);
-  color: var(--ink);
-  box-shadow: var(--mat-1-edge), 0 2px 10px rgba(0, 0, 0, 0.12);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: var(--mat-1-edge), 0 2px 10px rgba(0, 0, 0, 0.10);
 }
 .navitem.active svg {
   color: var(--accent);
@@ -473,7 +489,7 @@ code {
 /* ---------- workspace ---------- */
 
 .workspace {
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -719,12 +735,19 @@ code {
   background: var(--composer-bg);
   border: 1px solid var(--mat-1-border);
   box-shadow: var(--mat-1-edge), 0 6px 24px rgba(0, 0, 0, 0.10);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
-  backdrop-filter: blur(20px) saturate(140%);
-  transition: border-color var(--m-fast) ease;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  transition: border-color var(--m-fast) ease, transform var(--m-normal) var(--ease-spring),
+    box-shadow var(--m-normal) ease;
 }
 .composer:focus-within {
   border-color: var(--accent);
+  transform: scale(1.008);
+  box-shadow: var(--mat-1-edge), 0 12px 36px rgba(0, 0, 0, 0.14), 0 0 0 4px var(--accent-glow);
+}
+html.refract .composer {
+  -webkit-backdrop-filter: url(#ideno-lens) blur(24px) saturate(180%);
+  backdrop-filter: url(#ideno-lens) blur(24px) saturate(180%);
 }
 .composer textarea {
   flex: 1;
@@ -1065,7 +1088,7 @@ code {
 /* ---------- idea state panel (§12, §13) ---------- */
 
 .statepane {
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   min-height: 0;
   display: flex;
   flex-direction: column;
