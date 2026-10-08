@@ -70,7 +70,10 @@ export async function initApiMode(): Promise<ApiMode> {
     const res = await fetch('/api/health', {
       signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(3000) : undefined,
     });
-    if (res.ok) {
+    // A backend answers JSON. Some static hosts answer 200 + index.html for
+    // any path (SPA history fallback) — that is NOT a backend.
+    const isJson = (res.headers.get('content-type') ?? '').includes('application/json');
+    if (res.ok && isJson) {
       cachedMode = 'server';
       return cachedMode;
     }

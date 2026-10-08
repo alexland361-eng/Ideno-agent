@@ -116,7 +116,12 @@ const CONFIG = {
   startup_notes: [],
 };
 
-const jsonBody = (data: unknown) => ({ ok: true, status: 200, json: async () => data });
+const jsonBody = (data: unknown) => ({
+  ok: true,
+  status: 200,
+  headers: { get: (n: string) => (n.toLowerCase() === 'content-type' ? 'application/json' : null) },
+  json: async () => data,
+});
 
 function sseBody(events: ChatEvent[]) {
   const text = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('');
@@ -530,6 +535,24 @@ describe('Ideno UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(await screen.findByTestId('connection-card')).toBeDefined();
     expect(screen.getByText(/Offline demo \(no server\)/i)).toBeDefined();
+  });
+
+  it('rejects SPA-fallback hosts: 200 + HTML is not a backend (offline demo boots)', async () => {
+    // Netlify/Cloudflare-style SPA fallback: every path returns 200 with index.html.
+    const htmlBody = '<!doctype html><html><body>fallback</body></html>';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: (n: string) => (n.toLowerCase() === 'content-type' ? 'text/html' : null) },
+        json: async () => { throw new Error('not JSON'); },
+        text: async () => htmlBody,
+      }) as unknown as Response),
+    );
+    render(<App />);
+    expect(await screen.findByTestId('offline-banner')).toBeDefined();
+    expect(screen.getByText('No idea yet.')).toBeDefined();
   });
 
   it('confirms before starting a new idea and resets the state', async () => {

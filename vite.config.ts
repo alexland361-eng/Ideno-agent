@@ -19,4 +19,11 @@ export default defineConfig({
       '/api': 'http://localhost:8787',
     },
   },
+  preview: {
+    // Allow any host so sandboxed/reverse-proxied previews work.
+    // NOTE: preview inherits server.proxy (deep merge — an empty proxy here
+    // cannot remove it). For a proxy-free static preview use
+    // vite.preview.config.ts, which simulates static hosting (GitHub Pages).
+    allowedHosts: true,
+  },
 });
